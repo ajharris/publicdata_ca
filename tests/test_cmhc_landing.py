@@ -2,7 +2,7 @@
 Tests for CMHC landing page resolver module.
 """
 
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from urllib.error import URLError
 
 import pytest

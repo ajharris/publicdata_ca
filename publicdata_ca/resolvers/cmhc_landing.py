@@ -12,12 +12,16 @@ from urllib.parse import urljoin, urlparse
 from publicdata_ca.http import retry_request
 
 
+# Constants for ranking
+INVALID_ASSET_PENALTY = -1000  # Penalty for assets that fail validation
+
+
 def _check_content_type(url: str, timeout: int = 10) -> Tuple[bool, Optional[str]]:
     """
     Check if a URL returns a data file (not HTML).
     
-    Makes a HEAD request to check the Content-Type header without downloading
-    the full file. If HEAD fails, falls back to a GET request reading only headers.
+    Makes a GET request to check the Content-Type header.
+    Only reads the headers, not the full content.
     
     Args:
         url: URL to check.
@@ -36,7 +40,7 @@ def _check_content_type(url: str, timeout: int = 10) -> Tuple[bool, Optional[str
         True
     """
     try:
-        # Try HEAD request first (faster, doesn't download content)
+        # Make request to check Content-Type header
         response = retry_request(url, max_retries=1, timeout=timeout)
         content_type = response.headers.get('Content-Type', '').lower()
         
@@ -286,7 +290,7 @@ def resolve_cmhc_landing_page(
             
             # If validation fails (HTML response), mark with negative rank
             if not is_valid:
-                asset['rank'] = -1000  # Move invalid assets to the bottom
+                asset['rank'] = INVALID_ASSET_PENALTY  # Move invalid assets to the bottom
                 if content_type:
                     asset['validation_error'] = f'HTML response detected: {content_type}'
                 else:
