@@ -1,6 +1,27 @@
 # publicdata_ca
 publicdata_ca is a lightweight Python package for discovering, resolving, and downloading Canadian public datasets. It automates StatsCan table retrieval, handles CMHC landing-page churn, enforces reproducible file layouts, and generates manifests so downstream analyses fail fast when data is missing.
 
+## Key Features
+
+### CMHC Landing Page Resolver
+The CMHC landing page resolver now includes advanced URL resolution with:
+- **Ranking**: Automatically prioritizes candidates based on file format (XLSX > CSV > XLS > ZIP), URL structure, and other quality indicators
+- **Validation**: Checks URLs to reject HTML responses and verify actual file types before download
+- **Robust extraction**: Handles various HTML structures and link patterns on CMHC websites
+
+Example usage:
+```python
+from publicdata_ca.resolvers.cmhc_landing import resolve_cmhc_landing_page
+
+# Resolve with validation (default)
+assets = resolve_cmhc_landing_page('https://www.cmhc-schl.gc.ca/data-page')
+for asset in assets:
+    print(f"{asset['title']}: {asset['url']} (rank: {asset['rank']})")
+    
+# Disable validation for faster resolution
+assets = resolve_cmhc_landing_page('https://www.cmhc-schl.gc.ca/data-page', validate=False)
+```
+
 ## Package layout
 
 - `publicdata_ca/catalog.py` — in-memory catalog for registering and searching dataset metadata.
