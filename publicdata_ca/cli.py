@@ -13,7 +13,7 @@ from typing import Optional
 from publicdata_ca.catalog import Catalog
 from publicdata_ca.providers.statcan import download_statcan_table, search_statcan_tables
 from publicdata_ca.providers.cmhc import download_cmhc_asset
-from publicdata_ca.manifest import build_run_manifest
+from publicdata_ca.manifest import build_manifest_file
 
 
 def cmd_search(args):
@@ -94,7 +94,7 @@ def cmd_fetch(args):
         
         # Create manifest if requested
         if args.manifest:
-            manifest_path = build_run_manifest(
+            manifest_path = build_manifest_file(
                 output_dir=output_dir,
                 datasets=[result],
                 manifest_name='manifest.json'
@@ -120,7 +120,7 @@ def cmd_manifest(args):
             with open(args.datasets_file, 'r') as f:
                 datasets = json.load(f)
         
-        manifest_path = build_run_manifest(
+        manifest_path = build_manifest_file(
             output_dir=args.output or './data',
             datasets=datasets
         )

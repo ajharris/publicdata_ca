@@ -4,6 +4,7 @@ publicdata_ca is a lightweight Python package for discovering, resolving, and do
 ## Package layout
 
 - `publicdata_ca/catalog.py` — in-memory catalog for registering and searching dataset metadata.
+- `publicdata_ca/datasets.py` — curated dataset definitions and pandas helpers ported from the ingestion notebook.
 - `publicdata_ca/providers/` — provider integrations such as StatsCan table metadata and CMHC landing-page handling.
 - `publicdata_ca/resolvers/` — HTML scrapers that translate landing pages into direct asset URLs.
 - `publicdata_ca/manifest.py` — utilities for building and validating download manifests.
