@@ -94,26 +94,41 @@ def download_file(
     url: str,
     output_path: str,
     max_retries: int = 3,
-    headers: Optional[Dict[str, str]] = None
+    headers: Optional[Dict[str, str]] = None,
+    chunk_size: int = 8192
 ) -> str:
     """
-    Download a file from a URL to a local path with retry logic.
+    Download a file from a URL to a local path with retry logic and streaming support.
+    
+    This function downloads files in chunks to avoid loading large files entirely
+    into memory, making it suitable for downloading large datasets.
     
     Args:
         url: The URL to download from.
         output_path: Local file path where the downloaded file will be saved.
         max_retries: Maximum number of retry attempts (default: 3).
         headers: Optional dictionary of HTTP headers.
+        chunk_size: Size of chunks to read at a time in bytes (default: 8192).
+            Larger chunks can be faster but use more memory.
     
     Returns:
         Path to the downloaded file.
     
     Raises:
         URLError: If download fails after all retries.
+    
+    Example:
+        >>> # Download a large file with streaming
+        >>> download_file('https://example.com/large_dataset.csv', './data.csv')
+        './data.csv'
     """
     response = retry_request(url, max_retries=max_retries, headers=headers)
     
     with open(output_path, 'wb') as f:
-        f.write(response.read())
+        while True:
+            chunk = response.read(chunk_size)
+            if not chunk:
+                break
+            f.write(chunk)
     
     return output_path
