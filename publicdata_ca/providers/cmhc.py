@@ -130,7 +130,8 @@ def download_cmhc_asset(
             downloaded_files.append(str(output_file.relative_to(output_path.parent)))
             asset['local_path'] = str(output_file)
         except (ValueError, Exception) as e:
-            # Handle download errors (both validation and other errors)
+            # Handle all download errors uniformly (ValueError for validation, Exception for others)
+            # Both are tracked the same way, but logged differently based on type
             error_msg = f"Failed to download '{asset['title']}' from {asset['url']}: {str(e)}"
             download_errors.append(error_msg)
             

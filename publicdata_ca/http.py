@@ -135,6 +135,7 @@ def download_file(
     # Validate content type if requested
     if validate_content_type:
         content_type = response.headers.get('Content-Type', '').lower()
+        # Check for HTML or XHTML content (using 'in' to match variants like 'application/xhtml+xml')
         if 'text/html' in content_type or 'application/xhtml' in content_type:
             raise ValueError(
                 f"Expected data file but received HTML content (Content-Type: {content_type}). "
