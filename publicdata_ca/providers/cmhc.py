@@ -129,17 +129,17 @@ def download_cmhc_asset(
             )
             downloaded_files.append(str(output_file.relative_to(output_path.parent)))
             asset['local_path'] = str(output_file)
-        except ValueError as e:
-            # Content type validation error (HTML detected)
+        except (ValueError, Exception) as e:
+            # Handle download errors (both validation and other errors)
             error_msg = f"Failed to download '{asset['title']}' from {asset['url']}: {str(e)}"
             download_errors.append(error_msg)
-            print(f"Error: {error_msg}")
-            asset['error'] = str(e)
-        except Exception as e:
-            # Other download errors
-            error_msg = f"Failed to download '{asset['title']}' from {asset['url']}: {str(e)}"
-            download_errors.append(error_msg)
-            print(f"Warning: {error_msg}")
+            
+            # Log as error for validation issues, warning for others
+            if isinstance(e, ValueError):
+                print(f"Error: {error_msg}")
+            else:
+                print(f"Warning: {error_msg}")
+            
             asset['error'] = str(e)
     
     # Generate dataset ID from landing URL
