@@ -99,11 +99,22 @@ def download_cmhc_asset(
         # Create a safe filename
         file_format = asset.get('format', 'dat')
         title = asset.get('title', 'asset')
-        # Sanitize filename
+        # Sanitize filename to prevent directory traversal
+        # Remove any path separators and only allow safe characters
         safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).strip()
         safe_title = safe_title.replace(' ', '_')
+        # Remove any remaining path separators that might have been introduced
+        safe_title = safe_title.replace('/', '_').replace('\\', '_').replace('..', '_')
+        # Ensure the title is not empty
+        if not safe_title:
+            safe_title = 'asset'
         
-        file_name = f"{safe_title}.{file_format}"
+        # Sanitize file format to only allow alphanumeric characters
+        safe_format = "".join(c for c in file_format if c.isalnum())
+        if not safe_format:
+            safe_format = 'dat'
+        
+        file_name = f"{safe_title}.{safe_format}"
         output_file = output_path / file_name
         
         try:

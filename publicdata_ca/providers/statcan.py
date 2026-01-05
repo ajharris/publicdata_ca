@@ -73,8 +73,13 @@ def download_statcan_table(
     # This is a simplified implementation showing the intended structure
     
     try:
-        # For now, we'll just create a metadata structure
-        # In production, this would call: download_file(download_url, str(output_file), max_retries)
+        # IMPORTANT: This is a placeholder implementation showing the intended structure.
+        # The actual Statistics Canada API requires specific authentication and parameters.
+        # To implement actual downloads, you would:
+        # 1. Register for StatsCan API access and obtain credentials
+        # 2. Use their official API endpoints with proper authentication
+        # 3. Call: download_file(download_url, str(output_file), max_retries)
+        # For now, this function only returns metadata without downloading files.
         
         result = {
             'dataset_id': f'statcan_{table_id}',
