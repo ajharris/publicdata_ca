@@ -5,11 +5,10 @@ This module provides functionality to download tables and datasets from Statisti
 """
 
 import json
-import os
 import zipfile
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from publicdata_ca.http import retry_request, download_file
+from publicdata_ca.http import download_file
 
 
 def download_statcan_table(
