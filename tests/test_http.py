@@ -1,0 +1,284 @@
+"""
+Tests for HTTP utilities module.
+"""
+
+import os
+import tempfile
+from unittest.mock import Mock, patch, MagicMock
+from urllib.error import URLError, HTTPError
+
+import pytest
+
+from publicdata_ca.http import (
+    get_default_headers,
+    retry_request,
+    download_file
+)
+
+
+def test_get_default_headers():
+    """Test that default headers include required fields."""
+    headers = get_default_headers()
+    
+    assert 'User-Agent' in headers
+    assert 'publicdata_ca' in headers['User-Agent']
+    assert 'Accept' in headers
+    assert 'Accept-Encoding' in headers
+
+
+def test_retry_request_success_on_first_try():
+    """Test successful request on first attempt."""
+    mock_response = Mock()
+    mock_response.read.return_value = b'test data'
+    
+    with patch('publicdata_ca.http.request.urlopen', return_value=mock_response) as mock_urlopen:
+        response = retry_request('https://example.com/data.csv')
+        
+        assert response == mock_response
+        assert mock_urlopen.call_count == 1
+
+
+def test_retry_request_with_custom_headers():
+    """Test that custom headers are used in requests."""
+    mock_response = Mock()
+    custom_headers = {'Authorization': 'Bearer token123'}
+    
+    with patch('publicdata_ca.http.request.urlopen', return_value=mock_response) as mock_urlopen, \
+         patch('publicdata_ca.http.request.Request') as mock_request:
+        
+        retry_request('https://example.com/data.csv', headers=custom_headers)
+        
+        # Verify Request was called with custom headers
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        assert call_args[1]['headers'] == custom_headers
+
+
+def test_retry_request_succeeds_after_retries():
+    """Test that request succeeds after transient failures."""
+    mock_response = Mock()
+    mock_response.read.return_value = b'test data'
+    
+    # Fail twice, then succeed
+    with patch('publicdata_ca.http.request.urlopen') as mock_urlopen, \
+         patch('publicdata_ca.http.time.sleep'):  # Mock sleep to speed up test
+        
+        mock_urlopen.side_effect = [
+            URLError('Connection failed'),
+            URLError('Connection failed'),
+            mock_response
+        ]
+        
+        response = retry_request('https://example.com/data.csv', max_retries=3, retry_delay=0.1)
+        
+        assert response == mock_response
+        assert mock_urlopen.call_count == 3
+
+
+def test_retry_request_fails_after_max_retries():
+    """Test that request fails after exceeding max retries."""
+    with patch('publicdata_ca.http.request.urlopen') as mock_urlopen, \
+         patch('publicdata_ca.http.time.sleep'):
+        
+        mock_urlopen.side_effect = URLError('Connection failed')
+        
+        with pytest.raises(URLError):
+            retry_request('https://example.com/data.csv', max_retries=3, retry_delay=0.1)
+        
+        assert mock_urlopen.call_count == 3
+
+
+def test_retry_request_does_not_retry_4xx_errors():
+    """Test that 4xx client errors are not retried (except 429 and 408)."""
+    with patch('publicdata_ca.http.request.urlopen') as mock_urlopen:
+        
+        # 404 should not be retried
+        mock_urlopen.side_effect = HTTPError(
+            'https://example.com', 404, 'Not Found', {}, None
+        )
+        
+        with pytest.raises(HTTPError):
+            retry_request('https://example.com/data.csv', max_retries=3)
+        
+        # Should only try once, no retries
+        assert mock_urlopen.call_count == 1
+
+
+def test_retry_request_retries_5xx_errors():
+    """Test that 5xx server errors are retried."""
+    mock_response = Mock()
+    
+    with patch('publicdata_ca.http.request.urlopen') as mock_urlopen, \
+         patch('publicdata_ca.http.time.sleep'):
+        
+        # Fail with 500, then succeed
+        mock_urlopen.side_effect = [
+            HTTPError('https://example.com', 500, 'Server Error', {}, None),
+            mock_response
+        ]
+        
+        response = retry_request('https://example.com/data.csv', max_retries=3, retry_delay=0.1)
+        
+        assert response == mock_response
+        assert mock_urlopen.call_count == 2
+
+
+def test_retry_request_retries_429_rate_limit():
+    """Test that 429 rate limit errors are retried."""
+    mock_response = Mock()
+    
+    with patch('publicdata_ca.http.request.urlopen') as mock_urlopen, \
+         patch('publicdata_ca.http.time.sleep'):
+        
+        # Fail with 429, then succeed
+        mock_urlopen.side_effect = [
+            HTTPError('https://example.com', 429, 'Too Many Requests', {}, None),
+            mock_response
+        ]
+        
+        response = retry_request('https://example.com/data.csv', max_retries=3, retry_delay=0.1)
+        
+        assert response == mock_response
+        assert mock_urlopen.call_count == 2
+
+
+def test_download_file_creates_file():
+    """Test that download_file creates a file with correct content."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'test_file.csv')
+        test_data = b'column1,column2\nvalue1,value2\n'
+        
+        mock_response = Mock()
+        # Simulate streaming by returning chunks
+        mock_response.read.side_effect = [test_data[:10], test_data[10:], b'']
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            result_path = download_file('https://example.com/data.csv', output_path)
+            
+            assert result_path == output_path
+            assert os.path.exists(output_path)
+            
+            with open(output_path, 'rb') as f:
+                content = f.read()
+                assert content == test_data
+
+
+def test_download_file_streaming_with_chunks():
+    """Test that download_file uses streaming with configurable chunk size."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'large_file.dat')
+        
+        # Create test data larger than default chunk size
+        test_data = b'x' * 20000
+        
+        mock_response = Mock()
+        # Simulate reading in chunks
+        chunk_size = 8192
+        chunks = [test_data[i:i+chunk_size] for i in range(0, len(test_data), chunk_size)]
+        chunks.append(b'')  # Empty chunk to signal end
+        mock_response.read.side_effect = chunks
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            download_file('https://example.com/large.dat', output_path, chunk_size=chunk_size)
+            
+            # Verify file was written correctly
+            with open(output_path, 'rb') as f:
+                content = f.read()
+                assert content == test_data
+            
+            # Verify read was called multiple times (streaming)
+            assert mock_response.read.call_count == len(chunks)
+
+
+def test_download_file_with_custom_chunk_size():
+    """Test download_file with custom chunk size."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'test.dat')
+        test_data = b'abcd' * 100  # 400 bytes
+        custom_chunk_size = 50
+        
+        mock_response = Mock()
+        chunks = [test_data[i:i+custom_chunk_size] 
+                  for i in range(0, len(test_data), custom_chunk_size)]
+        chunks.append(b'')
+        mock_response.read.side_effect = chunks
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            download_file('https://example.com/data.dat', output_path, chunk_size=custom_chunk_size)
+            
+            with open(output_path, 'rb') as f:
+                assert f.read() == test_data
+            
+            # Verify chunks were read with custom size
+            assert mock_response.read.call_count == len(chunks)
+            # Verify first call used custom chunk size
+            mock_response.read.assert_any_call(custom_chunk_size)
+
+
+def test_download_file_respects_max_retries():
+    """Test that download_file passes max_retries to retry_request."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'test.csv')
+        
+        with patch('publicdata_ca.http.retry_request') as mock_retry:
+            mock_response = Mock()
+            mock_response.read.return_value = b''
+            mock_retry.return_value = mock_response
+            
+            download_file('https://example.com/data.csv', output_path, max_retries=5)
+            
+            # Verify max_retries was passed through
+            mock_retry.assert_called_once()
+            assert mock_retry.call_args[1]['max_retries'] == 5
+
+
+def test_download_file_respects_custom_headers():
+    """Test that download_file passes custom headers to retry_request."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'test.csv')
+        custom_headers = {'X-Custom': 'value'}
+        
+        with patch('publicdata_ca.http.retry_request') as mock_retry:
+            mock_response = Mock()
+            mock_response.read.return_value = b''
+            mock_retry.return_value = mock_response
+            
+            download_file('https://example.com/data.csv', output_path, headers=custom_headers)
+            
+            # Verify headers were passed through
+            assert mock_retry.call_args[1]['headers'] == custom_headers
+
+
+def test_retry_request_timeout_parameter():
+    """Test that timeout parameter is used in requests."""
+    mock_response = Mock()
+    
+    with patch('publicdata_ca.http.request.urlopen', return_value=mock_response) as mock_urlopen:
+        retry_request('https://example.com/data.csv', timeout=60)
+        
+        # Verify urlopen was called with timeout
+        call_args = mock_urlopen.call_args
+        assert call_args[1]['timeout'] == 60
+
+
+def test_exponential_backoff_timing():
+    """Test that retry delays follow exponential backoff."""
+    with patch('publicdata_ca.http.request.urlopen') as mock_urlopen, \
+         patch('publicdata_ca.http.time.sleep') as mock_sleep:
+        
+        mock_urlopen.side_effect = [
+            URLError('Failed'),
+            URLError('Failed'),
+            URLError('Failed')
+        ]
+        
+        with pytest.raises(URLError):
+            retry_request('https://example.com/data.csv', max_retries=3, retry_delay=1.0)
+        
+        # Should sleep twice (after first and second attempts)
+        assert mock_sleep.call_count == 2
+        
+        # Verify exponential backoff: 1.0, 2.0
+        sleep_calls = [call[0][0] for call in mock_sleep.call_args_list]
+        assert sleep_calls[0] == 1.0  # First retry delay
+        assert sleep_calls[1] == 2.0  # Second retry delay (doubled)
