@@ -7,7 +7,7 @@ ensuring reproducibility and enabling fail-fast behavior when expected data is m
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
@@ -53,8 +53,10 @@ def build_run_manifest(
     
     manifest_path = output_path / manifest_name
     
+    created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
     manifest = {
-        "created_at": datetime.utcnow().isoformat() + "Z",
+        "created_at": created_at,
         "datasets": datasets,
         "total_datasets": len(datasets),
         "output_directory": str(output_path.absolute())
