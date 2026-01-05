@@ -282,3 +282,95 @@ def test_exponential_backoff_timing():
         sleep_calls = [call[0][0] for call in mock_sleep.call_args_list]
         assert sleep_calls[0] == 1.0  # First retry delay
         assert sleep_calls[1] == 2.0  # Second retry delay (doubled)
+
+
+def test_download_file_with_content_validation_accepts_csv():
+    """Test that download_file with validation accepts CSV content."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        test_data = b'col1,col2\nval1,val2\n'
+        
+        mock_response = Mock()
+        mock_response.headers = {'Content-Type': 'text/csv'}
+        mock_response.read.side_effect = [test_data, b'']
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            result_path = download_file(
+                'https://example.com/data.csv',
+                output_path,
+                validate_content_type=True
+            )
+            
+            assert result_path == output_path
+            assert os.path.exists(output_path)
+            
+            with open(output_path, 'rb') as f:
+                assert f.read() == test_data
+
+
+def test_download_file_with_content_validation_rejects_html():
+    """Test that download_file with validation rejects HTML content."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        
+        mock_response = Mock()
+        mock_response.headers = {'Content-Type': 'text/html; charset=utf-8'}
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            with pytest.raises(ValueError) as exc_info:
+                download_file(
+                    'https://example.com/data.csv',
+                    output_path,
+                    validate_content_type=True
+                )
+            
+            # Verify error message is actionable
+            error_msg = str(exc_info.value)
+            assert 'HTML content' in error_msg
+            assert 'Content-Type' in error_msg
+            assert 'text/html' in error_msg
+            
+            # File should not be created
+            assert not os.path.exists(output_path)
+
+
+def test_download_file_with_content_validation_rejects_xhtml():
+    """Test that download_file with validation rejects XHTML content."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.xlsx')
+        
+        mock_response = Mock()
+        mock_response.headers = {'Content-Type': 'application/xhtml+xml'}
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            with pytest.raises(ValueError) as exc_info:
+                download_file(
+                    'https://example.com/data.xlsx',
+                    output_path,
+                    validate_content_type=True
+                )
+            
+            assert 'HTML content' in str(exc_info.value)
+            assert not os.path.exists(output_path)
+
+
+def test_download_file_without_validation_accepts_html():
+    """Test that download_file without validation accepts HTML (backward compatibility)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'page.html')
+        test_data = b'<html><body>Content</body></html>'
+        
+        mock_response = Mock()
+        mock_response.headers = {'Content-Type': 'text/html'}
+        mock_response.read.side_effect = [test_data, b'']
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            # Should not raise when validation is disabled (default)
+            result_path = download_file(
+                'https://example.com/page.html',
+                output_path,
+                validate_content_type=False
+            )
+            
+            assert result_path == output_path
+            assert os.path.exists(output_path)

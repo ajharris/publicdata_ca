@@ -95,6 +95,8 @@ def download_cmhc_asset(
     
     # Download each asset
     downloaded_files = []
+    download_errors = []
+    
     for asset in assets:
         # Create a safe filename
         file_format = asset.get('format', 'dat')
@@ -118,11 +120,27 @@ def download_cmhc_asset(
         output_file = output_path / file_name
         
         try:
-            download_file(asset['url'], str(output_file), max_retries=max_retries)
+            # Download with content-type validation to reject HTML responses
+            download_file(
+                asset['url'],
+                str(output_file),
+                max_retries=max_retries,
+                validate_content_type=True
+            )
             downloaded_files.append(str(output_file.relative_to(output_path.parent)))
             asset['local_path'] = str(output_file)
+        except ValueError as e:
+            # Content type validation error (HTML detected)
+            error_msg = f"Failed to download '{asset['title']}' from {asset['url']}: {str(e)}"
+            download_errors.append(error_msg)
+            print(f"Error: {error_msg}")
+            asset['error'] = str(e)
         except Exception as e:
-            print(f"Warning: Failed to download {asset['title']}: {str(e)}")
+            # Other download errors
+            error_msg = f"Failed to download '{asset['title']}' from {asset['url']}: {str(e)}"
+            download_errors.append(error_msg)
+            print(f"Warning: {error_msg}")
+            asset['error'] = str(e)
     
     # Generate dataset ID from landing URL
     dataset_id = f"cmhc_{landing_url.split('/')[-1]}"
@@ -132,7 +150,8 @@ def download_cmhc_asset(
         'provider': 'cmhc',
         'files': downloaded_files,
         'landing_url': landing_url,
-        'assets': assets
+        'assets': assets,
+        'errors': download_errors
     }
     
     return result
