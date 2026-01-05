@@ -4,9 +4,11 @@ Statistics Canada (StatsCan) data provider.
 This module provides functionality to download tables and datasets from Statistics Canada.
 """
 
+import json
 import os
+import zipfile
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from publicdata_ca.http import retry_request, download_file
 
 
@@ -14,87 +16,108 @@ def download_statcan_table(
     table_id: str,
     output_dir: str,
     file_format: str = "csv",
-    max_retries: int = 3
+    max_retries: int = 3,
+    skip_existing: bool = True,
+    language: str = "en"
 ) -> Dict[str, Any]:
     """
-    Download a Statistics Canada table.
+    Download a Statistics Canada table from the WDS API.
     
-    Statistics Canada tables are identified by table numbers (e.g., '14-10-0287-01').
-    This function downloads the table data in the specified format.
+    This function downloads full table data from StatsCan's Web Data Service (WDS) API.
+    The API returns a ZIP file containing CSV data and metadata files. The function
+    extracts the ZIP, parses the manifest, and returns information about downloaded files.
     
     Args:
-        table_id: StatsCan table identifier (e.g., '14-10-0287-01').
-        output_dir: Directory where the table file will be saved.
-        file_format: Output format ('csv', 'json', or 'xml'). Default is 'csv'.
+        table_id: StatsCan table identifier (e.g., '14-10-0287-01' or '14100287').
+                 Accepts both hyphenated and non-hyphenated PID formats.
+        output_dir: Directory where the table files will be saved.
+        file_format: Output format ('csv' only for WDS API). Default is 'csv'.
         max_retries: Maximum number of download retry attempts (default: 3).
+        skip_existing: If True, skip download if the main CSV file already exists (default: True).
+        language: Language for download ('en' or 'fr'). Default is 'en'.
     
     Returns:
         Dictionary containing:
             - dataset_id: The table identifier
             - provider: 'statcan'
-            - files: List of downloaded file paths
+            - files: List of extracted file paths
             - url: Source URL
-            - title: Table title (if available)
+            - title: Table title (from manifest if available)
+            - pid: Product ID
+            - manifest: Parsed manifest data (if available)
     
     Example:
-        >>> result = download_statcan_table('14-10-0287-01', './data')
+        >>> result = download_statcan_table('18100004', './data')
         >>> print(result['files'])
-        ['./data/14-10-0287-01.csv']
+        ['./data/18100004.csv', './data/18100004_MetaData.csv']
     
     Notes:
-        - The function uses the StatsCan Web Data Service API
-        - Table IDs should include hyphens (e.g., '14-10-0287-01')
-        - Downloaded files are named using the table ID
+        - Uses StatsCan Web Data Service (WDS) REST API
+        - Downloads come as ZIP files containing CSV and metadata
+        - Supports skip-if-exists to avoid redundant downloads
+        - Manifest files are parsed when present in the ZIP
     """
-    # Normalize table ID (remove spaces, ensure hyphens)
-    table_id = table_id.strip().replace(' ', '')
+    # Normalize table ID to PID format (8 digits, no hyphens)
+    pid = _normalize_pid(table_id)
     
     # Create output directory if it doesn't exist
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     
-    # Build StatsCan download URL
-    # Statistics Canada provides data through their web data service
-    # Base URL format: https://www150.statcan.gc.ca/t1/tbl1/en/tv.action?pid=TABLEID
-    # For CSV download, we use a different endpoint
-    base_url = "https://www150.statcan.gc.ca/t1/tbl1/en/dtl!downloadDbLoadingData-nonTraduit.action"
+    # Define the main output CSV file
+    main_csv_file = output_path / f"{pid}.csv"
     
-    # The actual implementation would need to handle StatsCan's specific API
-    # For now, we'll create a placeholder that shows the structure
-    file_name = f"{table_id}.{file_format}"
-    output_file = output_path / file_name
+    # Skip download if file exists and skip_existing is True
+    if skip_existing and main_csv_file.exists():
+        return {
+            'dataset_id': f'statcan_{pid}',
+            'provider': 'statcan',
+            'files': [str(main_csv_file)],
+            'url': _build_wds_url(pid, language),
+            'title': f'StatsCan Table {pid}',
+            'pid': pid,
+            'skipped': True
+        }
     
-    # In a real implementation, this would use the actual StatsCan API
-    # Example URL structure (may vary based on StatsCan's actual API):
-    params = f"pid={table_id.replace('-', '')}"  # StatsCan might use table IDs without hyphens
-    download_url = f"{base_url}?{params}"
-    
-    # Note: The actual StatsCan API might require different parameters or authentication
-    # This is a simplified implementation showing the intended structure
+    # Build StatsCan WDS API URL
+    download_url = _build_wds_url(pid, language)
     
     try:
-        # IMPORTANT: This is a placeholder implementation showing the intended structure.
-        # The actual Statistics Canada API requires specific authentication and parameters.
-        # To implement actual downloads, you would:
-        # 1. Register for StatsCan API access and obtain credentials
-        # 2. Use their official API endpoints with proper authentication
-        # 3. Call: download_file(download_url, str(output_file), max_retries)
-        # For now, this function only returns metadata without downloading files.
+        # Download ZIP file to temporary location
+        zip_path = output_path / f"{pid}_temp.zip"
+        download_file(download_url, str(zip_path), max_retries=max_retries)
+        
+        # Extract ZIP file
+        extracted_files = _extract_zip(zip_path, output_path, pid)
+        
+        # Parse manifest if available
+        manifest_data = _parse_manifest(output_path, pid)
+        
+        # Clean up ZIP file
+        if zip_path.exists():
+            zip_path.unlink()
         
         result = {
-            'dataset_id': f'statcan_{table_id}',
+            'dataset_id': f'statcan_{pid}',
             'provider': 'statcan',
-            'files': [str(output_file.relative_to(output_path.parent))],
+            'files': extracted_files,
             'url': download_url,
-            'title': f'StatsCan Table {table_id}',
-            'table_id': table_id,
-            'format': file_format
+            'title': manifest_data.get('title', f'StatsCan Table {pid}') if manifest_data else f'StatsCan Table {pid}',
+            'pid': pid,
+            'skipped': False
         }
+        
+        if manifest_data:
+            result['manifest'] = manifest_data
         
         return result
         
     except Exception as e:
-        raise RuntimeError(f"Failed to download StatsCan table {table_id}: {str(e)}")
+        # Clean up temporary ZIP file on error
+        zip_path = output_path / f"{pid}_temp.zip"
+        if zip_path.exists():
+            zip_path.unlink()
+        raise RuntimeError(f"Failed to download StatsCan table {pid}: {str(e)}")
 
 
 def search_statcan_tables(query: str) -> list:
@@ -116,3 +139,124 @@ def search_statcan_tables(query: str) -> list:
     # Placeholder for future implementation
     # Would integrate with StatsCan's search/discovery API
     return []
+
+
+def _normalize_pid(table_id: str) -> str:
+    """
+    Normalize a table ID to PID format (8 digits, no hyphens).
+    
+    Accepts formats like:
+        - '18100004' (already normalized)
+        - '18-10-0004' (hyphenated)
+        - '1810000401' (10 digits with suffix)
+    
+    Args:
+        table_id: Table identifier in various formats.
+    
+    Returns:
+        Normalized 8-digit PID string.
+    
+    Raises:
+        ValueError: If the table ID format is invalid.
+    """
+    # Remove spaces and hyphens
+    pid = table_id.strip().replace(' ', '').replace('-', '')
+    
+    # Extract first 8 digits
+    if len(pid) >= 8 and pid[:8].isdigit():
+        return pid[:8]
+    
+    raise ValueError(f"Invalid StatsCan table ID format: {table_id}")
+
+
+def _build_wds_url(pid: str, language: str = "en") -> str:
+    """
+    Build StatsCan WDS API URL for full table CSV download.
+    
+    Args:
+        pid: 8-digit Product ID.
+        language: Language code ('en' or 'fr').
+    
+    Returns:
+        Full WDS API URL.
+    """
+    return f"https://www150.statcan.gc.ca/t1/wds/rest/getFullTableDownloadCSV/{language}/{pid}"
+
+
+def _extract_zip(zip_path: Path, output_dir: Path, pid: str) -> List[str]:
+    """
+    Extract ZIP file contents to output directory.
+    
+    StatsCan ZIP files typically contain:
+        - {PID}.csv - Main data file
+        - {PID}_MetaData.csv - Metadata file
+        - Other supporting files
+    
+    Args:
+        zip_path: Path to the ZIP file.
+        output_dir: Directory to extract files to.
+        pid: Product ID for file naming.
+    
+    Returns:
+        List of extracted file paths (relative to output_dir).
+    
+    Raises:
+        zipfile.BadZipFile: If the ZIP file is invalid.
+    """
+    extracted_files = []
+    
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        # Get list of files in ZIP
+        zip_contents = zip_ref.namelist()
+        
+        # Extract all files
+        for file_name in zip_contents:
+            # Skip directories
+            if file_name.endswith('/'):
+                continue
+            
+            # Extract the file
+            zip_ref.extract(file_name, output_dir)
+            extracted_path = output_dir / file_name
+            
+            # Store relative path
+            extracted_files.append(str(extracted_path))
+    
+    return extracted_files
+
+
+def _parse_manifest(output_dir: Path, pid: str) -> Optional[Dict[str, Any]]:
+    """
+    Parse manifest or metadata file if present.
+    
+    StatsCan ZIP files may contain metadata in various formats:
+        - {PID}_MetaData.csv
+        - manifest.json (less common)
+    
+    Args:
+        output_dir: Directory containing extracted files.
+        pid: Product ID.
+    
+    Returns:
+        Dictionary with parsed manifest data, or None if no manifest found.
+    """
+    # Check for JSON manifest
+    manifest_json = output_dir / "manifest.json"
+    if manifest_json.exists():
+        try:
+            with open(manifest_json, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    
+    # Check for metadata CSV
+    metadata_csv = output_dir / f"{pid}_MetaData.csv"
+    if metadata_csv.exists():
+        # Metadata CSV exists but parsing it into structured data
+        # would require more complex logic. For now, just note its presence.
+        return {
+            'metadata_file': str(metadata_csv),
+            'title': f'StatsCan Table {pid}'
+        }
+    
+    return None
