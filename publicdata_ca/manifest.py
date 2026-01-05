@@ -9,10 +9,14 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
+
+from publicdata_ca.datasets import ensure_raw_destination
 
 
-def build_run_manifest(
+def build_manifest_file(
     output_dir: str,
     datasets: List[Dict[str, Any]],
     manifest_name: str = "manifest.json"
@@ -46,7 +50,7 @@ def build_run_manifest(
         ...         'title': 'Employment Statistics'
         ...     }
         ... ]
-        >>> manifest_path = build_run_manifest('/data', datasets)
+        >>> manifest_path = build_manifest_file('/data', datasets)
     """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -66,6 +70,44 @@ def build_run_manifest(
         json.dump(manifest, f, indent=2, ensure_ascii=False)
     
     return str(manifest_path)
+
+
+def build_run_manifest(catalog: pd.DataFrame) -> pd.DataFrame:
+    """Mirror the notebook's run manifest summary for curated datasets."""
+
+    def action(row: pd.Series) -> str:
+        if row["provider"] == "statcan" and row["pid"]:
+            return f"download_statcan_table({row['pid']}, target_file)"
+        if row["provider"] == "cmhc" and row.get("direct_url"):
+            return "download_cmhc_asset(direct_url, target_file)"
+        if row["provider"] == "cmhc":
+            return "Attempt scrape_cmhc_direct_url(page) or download manually"
+        return "Review configuration"
+
+    manifest = catalog.copy()
+
+    def normalize_target(path_value: Any) -> Optional[str]:
+        if isinstance(path_value, str):
+            return str(ensure_raw_destination(Path(path_value)))
+        if isinstance(path_value, Path):
+            return str(ensure_raw_destination(path_value))
+        return None
+
+    manifest["target_file"] = manifest["target_file"].apply(normalize_target)
+    manifest["exists"] = manifest["target_file"].apply(
+        lambda p: Path(p).exists() if isinstance(p, str) else False
+    )
+    manifest["action"] = manifest.apply(action, axis=1)
+
+    return manifest[[
+        "dataset",
+        "provider",
+        "automation_status",
+        "action",
+        "target_file",
+        "exists",
+        "status_note",
+    ]]
 
 
 def load_manifest(manifest_path: str) -> Dict[str, Any]:

@@ -11,11 +11,20 @@ This package provides tools for:
 __version__ = "0.1.0"
 
 from publicdata_ca.catalog import Catalog
-from publicdata_ca.manifest import build_run_manifest
-from publicdata_ca.http import retry_request, get_default_headers
+from publicdata_ca.datasets import (
+    DEFAULT_DATASETS,
+    Dataset,
+    build_dataset_catalog,
+)
+from publicdata_ca.http import get_default_headers, retry_request
+from publicdata_ca.manifest import build_manifest_file, build_run_manifest
 
 __all__ = [
     "Catalog",
+    "Dataset",
+    "DEFAULT_DATASETS",
+    "build_dataset_catalog",
+    "build_manifest_file",
     "build_run_manifest",
     "retry_request",
     "get_default_headers",
