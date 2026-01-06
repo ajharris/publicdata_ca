@@ -42,6 +42,7 @@ class TestDatasetRef:
         ref = DatasetRef(provider='statcan', id='18100004')
         assert ref.params == {}
         assert ref.metadata == {}
+        assert ref.tags == []
     
     def test_dataset_ref_with_params(self):
         """Test dataset reference with parameters."""
@@ -52,6 +53,32 @@ class TestDatasetRef:
         )
         assert ref.params['page_url'] == 'https://example.com'
         assert ref.params['format'] == 'xlsx'
+    
+    def test_dataset_ref_with_tags(self):
+        """Test dataset reference with tags."""
+        ref = DatasetRef(
+            provider='statcan',
+            id='18100004',
+            tags=['finance', 'economics', 'inflation']
+        )
+        assert ref.tags == ['finance', 'economics', 'inflation']
+        assert 'finance' in ref.tags
+        assert 'economics' in ref.tags
+    
+    def test_dataset_ref_with_all_fields(self):
+        """Test dataset reference with all fields including tags."""
+        ref = DatasetRef(
+            provider='statcan',
+            id='18100004',
+            params={'language': 'en'},
+            metadata={'title': 'Consumer Price Index'},
+            tags=['finance', 'cpi']
+        )
+        assert ref.provider == 'statcan'
+        assert ref.id == '18100004'
+        assert ref.params['language'] == 'en'
+        assert ref.metadata['title'] == 'Consumer Price Index'
+        assert ref.tags == ['finance', 'cpi']
 
 
 class TestProviderRegistry:

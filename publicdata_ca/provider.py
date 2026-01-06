@@ -28,12 +28,14 @@ class DatasetRef:
         id: Dataset identifier within the provider namespace
         params: Additional parameters for dataset resolution (e.g., format, language)
         metadata: Optional metadata about the dataset (title, description, etc.)
+        tags: Optional tags for categorization (e.g., ['housing', 'labour', 'finance'])
     
     Example:
         >>> ref = DatasetRef(
         ...     provider='statcan',
         ...     id='18100004',
-        ...     params={'language': 'en'}
+        ...     params={'language': 'en'},
+        ...     tags=['finance', 'cpi']
         ... )
         >>> print(ref.canonical_id)
         'statcan:18100004'
@@ -43,6 +45,7 @@ class DatasetRef:
     id: str
     params: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    tags: List[str] = field(default_factory=list)
     
     @property
     def canonical_id(self) -> str:

@@ -58,6 +58,7 @@ class Dataset:
     status_note: str
     page_url: str | None = None
     direct_url: str | None = None
+    tags: list[str] | None = None
 
     def destination(self) -> Path | None:
         if self.target_file is None:
@@ -86,6 +87,7 @@ DEFAULT_DATASETS: Sequence[Dataset] = (
         target_file=RAW_DATA_DIR / "cpi_all_items_18100004.csv",
         automation_status="automatic",
         status_note="Verify the latest CPI release (usually mid-month) before re-running.",
+        tags=["finance", "economics", "inflation"],
     ),
     Dataset(
         dataset="median_household_income",
@@ -98,6 +100,7 @@ DEFAULT_DATASETS: Sequence[Dataset] = (
         target_file=RAW_DATA_DIR / "median_household_income_11100035.csv",
         automation_status="automatic",
         status_note="CIS table provides CMA-level coverage for major metros; confirm vector availability for smaller metros before modeling.",
+        tags=["economics", "labour", "income"],
     ),
     Dataset(
         dataset="population_estimates",
@@ -110,6 +113,7 @@ DEFAULT_DATASETS: Sequence[Dataset] = (
         target_file=RAW_DATA_DIR / "population_estimates_17100148.csv",
         automation_status="automatic",
         status_note="Release every February; used to scale metrics per 100k residents.",
+        tags=["demographics", "population"],
     ),
     Dataset(
         dataset="unemployment_rate",
@@ -122,6 +126,7 @@ DEFAULT_DATASETS: Sequence[Dataset] = (
         target_file=RAW_DATA_DIR / "unemployment_rate_14100459.csv",
         automation_status="automatic",
         status_note="Seasonally adjusted 3-month moving average preferred for stability.",
+        tags=["labour", "economics", "employment"],
     ),
     Dataset(
         dataset="rental_market_rents",
@@ -135,6 +140,7 @@ DEFAULT_DATASETS: Sequence[Dataset] = (
         automation_status="semi-automatic",
         status_note="Uses the last verified CMHC Azure blob URL; update when the 2026 release ships.",
         page_url="https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research/housing-data/rental-market/rental-market-report-data-tables",
+        tags=["housing", "rental", "real-estate"],
     ),
     Dataset(
         dataset="housing_starts",
@@ -148,6 +154,7 @@ DEFAULT_DATASETS: Sequence[Dataset] = (
         automation_status="semi-automatic",
         status_note="Pinned to the November 2025 CMHC housing starts release; refresh when the next workbook is published.",
         page_url="https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research/housing-data/data-tables/housing-market-data/monthly-housing-starts-construction-data-tables",
+        tags=["housing", "construction", "real-estate"],
     ),
 )
 
@@ -183,6 +190,7 @@ def build_dataset_catalog(datasets: Iterable[Dataset] | None = None) -> pd.DataF
             "direct_url",
             "target_file",
             "status_note",
+            "tags",
         ]
     ]
 
