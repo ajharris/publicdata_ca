@@ -13,6 +13,12 @@ from publicdata_ca.providers.ckan import (
     download_ckan_resource,
     CKANProvider,
 )
+from publicdata_ca.providers.socrata import (
+    search_socrata_datasets,
+    get_socrata_metadata,
+    download_socrata_dataset,
+    SocrataProvider,
+)
 
 __all__ = [
     "download_statcan_table",
@@ -25,4 +31,8 @@ __all__ = [
     "list_ckan_resources",
     "download_ckan_resource",
     "CKANProvider",
+    "search_socrata_datasets",
+    "get_socrata_metadata",
+    "download_socrata_dataset",
+    "SocrataProvider",
 ]
