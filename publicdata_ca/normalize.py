@@ -14,9 +14,10 @@ provider-specific metadata.
 
 from __future__ import annotations
 
+import calendar
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, Optional, Union
 
 
@@ -344,32 +345,16 @@ def parse_period(period_str: str, frequency: Optional[str] = None) -> Optional[N
     if normalized_freq == 'monthly':
         # End of month
         year, month = map(int, start_date.split('-')[:2])
-        if month == 12:
-            end_date = f"{year}-12-31"
-        else:
-            next_month = month + 1
-            # Last day of current month = day before first of next month
-            end_date = f"{year}-{next_month:02d}-01"
-            # Adjust to last day of previous month
-            dt = datetime.strptime(end_date, '%Y-%m-%d')
-            from datetime import timedelta
-            dt = dt - timedelta(days=1)
-            end_date = dt.strftime('%Y-%m-%d')
+        last_day = calendar.monthrange(year, month)[1]
+        end_date = f"{year}-{month:02d}-{last_day:02d}"
     
     elif normalized_freq == 'quarterly':
         # End of quarter
         year, month = map(int, start_date.split('-')[:2])
         quarter = (month - 1) // 3 + 1
         end_month = quarter * 3
-        if end_month == 12:
-            end_date = f"{year}-12-31"
-        else:
-            # Last day of quarter = day before first of next quarter
-            end_date = f"{year}-{end_month + 1:02d}-01"
-            dt = datetime.strptime(end_date, '%Y-%m-%d')
-            from datetime import timedelta
-            dt = dt - timedelta(days=1)
-            end_date = dt.strftime('%Y-%m-%d')
+        last_day = calendar.monthrange(year, end_month)[1]
+        end_date = f"{year}-{end_month:02d}-{last_day:02d}"
     
     elif normalized_freq == 'annual':
         # End of year
