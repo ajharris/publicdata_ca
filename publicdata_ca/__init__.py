@@ -6,6 +6,7 @@ This package provides tools for:
 - Handling CMHC landing-page changes
 - Enforcing reproducible file layouts
 - Generating manifests for downstream analyses
+- Normalizing time, geography, frequency, and units
 """
 
 __version__ = "0.1.0"
@@ -19,6 +20,17 @@ from publicdata_ca.datasets import (
 )
 from publicdata_ca.http import get_default_headers, retry_request
 from publicdata_ca.manifest import build_manifest_file, build_run_manifest
+from publicdata_ca.normalize import (
+    NormalizedPeriod,
+    NormalizedGeo,
+    NormalizedUnit,
+    normalize_frequency,
+    parse_date,
+    parse_period,
+    normalize_geo,
+    normalize_unit,
+    normalize_dataset_metadata,
+)
 from publicdata_ca.provider import (
     Provider,
     DatasetRef,
@@ -62,4 +74,13 @@ __all__ = [
     "save_profile",
     "list_profiles",
     "run_profile",
+    "NormalizedPeriod",
+    "NormalizedGeo",
+    "NormalizedUnit",
+    "normalize_frequency",
+    "parse_date",
+    "parse_period",
+    "normalize_geo",
+    "normalize_unit",
+    "normalize_dataset_metadata",
 ]
