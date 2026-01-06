@@ -13,10 +13,10 @@ To run smoke tests:
     pytest tests/test_provider_smoke.py -v -m smoke
 
 To run ALL tests including smoke tests:
-    pytest tests/ -v
+    pytest tests/ -v -o addopts="-ra"
 
-To skip smoke tests explicitly:
-    pytest tests/ -v -m "not smoke"
+To skip smoke tests explicitly (default behavior):
+    pytest tests/ -v
 
 Environment variables:
     SKIP_SMOKE_TESTS=1  - Skip smoke tests even if explicitly requested
@@ -53,7 +53,7 @@ def skip_if_smoke_disabled():
 class TestStatCanProviderSmoke:
     """Smoke tests for StatsCan provider with live endpoints."""
     
-    @pytest.mark.smoke
+
     def test_resolve_live_endpoint(self):
         """Test resolve with a real StatsCan table ID."""
         skip_if_smoke_disabled()
@@ -69,7 +69,7 @@ class TestStatCanProviderSmoke:
         assert 'url' in metadata
         assert 'statcan.gc.ca' in metadata['url']
     
-    @pytest.mark.smoke
+
     def test_fetch_small_dataset(self):
         """Test fetching a small dataset from live endpoint."""
         skip_if_smoke_disabled()
@@ -89,7 +89,7 @@ class TestStatCanProviderSmoke:
 class TestBOCValetProviderSmoke:
     """Smoke tests for Bank of Canada Valet provider with live endpoints."""
     
-    @pytest.mark.smoke
+
     def test_resolve_live_endpoint(self):
         """Test resolve with a real Valet series."""
         skip_if_smoke_disabled()
@@ -104,7 +104,7 @@ class TestBOCValetProviderSmoke:
         assert metadata['series_name'] == 'FXUSDCAD'
         assert 'bankofcanada.ca' in metadata['url']
     
-    @pytest.mark.smoke
+
     def test_fetch_recent_data(self):
         """Test fetching recent exchange rate data."""
         skip_if_smoke_disabled()
@@ -131,7 +131,7 @@ class TestBOCValetProviderSmoke:
 class TestCKANProviderSmoke:
     """Smoke tests for generic CKAN provider with live endpoints."""
     
-    @pytest.mark.smoke
+
     def test_search_live_portal(self):
         """Test search on a live CKAN portal."""
         skip_if_smoke_disabled()
@@ -154,7 +154,7 @@ class TestCKANProviderSmoke:
 class TestOpenCanadaProviderSmoke:
     """Smoke tests for Open Canada provider with live endpoints."""
     
-    @pytest.mark.smoke
+
     def test_search_live_portal(self):
         """Test search on Open Canada portal."""
         skip_if_smoke_disabled()
@@ -176,7 +176,7 @@ class TestOpenCanadaProviderSmoke:
 class TestSocrataProviderSmoke:
     """Smoke tests for Socrata provider with live endpoints."""
     
-    @pytest.mark.smoke
+
     def test_search_live_portal(self):
         """Test search on a live Socrata portal."""
         skip_if_smoke_disabled()
@@ -199,7 +199,7 @@ class TestSocrataProviderSmoke:
 class TestSDMXProviderSmoke:
     """Smoke tests for SDMX provider with live endpoints."""
     
-    @pytest.mark.smoke
+
     def test_resolve_live_dataflow(self):
         """Test resolve with a live SDMX endpoint."""
         skip_if_smoke_disabled()
@@ -225,7 +225,7 @@ class TestSDMXProviderSmoke:
 class TestCMHCProviderSmoke:
     """Smoke tests for CMHC provider with live endpoints."""
     
-    @pytest.mark.smoke
+
     def test_resolve_direct_url(self):
         """Test resolve with direct URL (no network required)."""
         skip_if_smoke_disabled()
@@ -247,7 +247,7 @@ class TestCMHCProviderSmoke:
 class TestProviderSmokeConsistency:
     """Cross-provider smoke tests."""
     
-    @pytest.mark.smoke
+
     def test_all_providers_can_be_instantiated(self):
         """Verify all providers can be instantiated without errors."""
         skip_if_smoke_disabled()

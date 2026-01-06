@@ -1075,3 +1075,17 @@ pytest
 ```
 
 You can also use `pytest -k catalog` to focus on a subset of tests while iterating on specific features.
+
+### Testing Strategy
+
+The project uses a comprehensive testing strategy with two types of tests:
+
+- **Contract Tests** (default): Offline tests using real API response fixtures that validate provider implementations. These run automatically and have no network dependencies.
+- **Smoke Tests** (optional): Live tests that verify basic connectivity to real provider endpoints. These are skipped by default.
+
+For detailed information about the testing strategy, fixtures, and how to add tests for new providers, see [tests/TESTING.md](tests/TESTING.md).
+
+To run smoke tests explicitly:
+```bash
+pytest tests/test_provider_smoke.py -v -m smoke
+```

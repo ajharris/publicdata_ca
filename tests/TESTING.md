@@ -95,11 +95,11 @@ pytest tests/test_provider_smoke.py -v -m smoke
 # Run smoke tests for a specific provider
 pytest tests/test_provider_smoke.py::TestStatCanProviderSmoke -v -m smoke
 
-# Run ALL tests including smoke tests
-pytest tests/ -v -m "smoke or not smoke"
+# Run ALL tests including smoke tests (override default exclusion)
+pytest tests/ -v -o addopts="-ra"
 
 # Skip smoke tests explicitly (default behavior)
-pytest tests/ -v -m "not smoke"
+pytest tests/ -v
 ```
 
 ### Disabling Smoke Tests via Environment Variable
