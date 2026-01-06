@@ -1,5 +1,5 @@
 # publicdata_ca
-publicdata_ca is a lightweight Python package for discovering, resolving, and downloading Canadian public datasets. It automates StatsCan table retrieval, handles CMHC landing-page churn, enforces reproducible file layouts, and generates manifests so downstream analyses fail fast when data is missing.
+publicdata_ca is a lightweight Python package for discovering, resolving, and downloading Canadian public datasets. It automates StatsCan table retrieval, handles CMHC landing-page churn, enforces reproducible file layouts, generates manifests so downstream analyses fail fast when data is missing, and provides normalization utilities for standardizing metadata.
 
 ## Quickstart
 
@@ -192,6 +192,7 @@ CMHC landing pages can change frequently, causing download failures. Here's how 
 
 - `publicdata_ca/catalog.py` — in-memory catalog for registering and searching dataset metadata.
 - `publicdata_ca/datasets.py` — curated dataset definitions, pandas helpers, and the `refresh_datasets()` function for automated downloads.
+- `publicdata_ca/normalize.py` — normalization utilities for standardizing time, geography, frequency, and units across datasets.
 - `publicdata_ca/profiles.py` — YAML-based profiles system for multi-project dataset refresh workflows.
 - `publicdata_ca/providers/` — provider integrations such as StatsCan table metadata and CMHC landing-page handling.
 - `publicdata_ca/resolvers/` — HTML scrapers that translate landing pages into direct asset URLs.
@@ -199,6 +200,81 @@ CMHC landing pages can change frequently, causing download failures. Here's how 
 - `publicdata_ca/manifest.py` — utilities for building and validating download manifests.
 - `profiles/` — directory containing YAML profile files for organizing dataset collections.
 - `tests/` — pytest suite covering the high-level catalog and manifest flows.
+
+## Normalization Utilities
+
+The normalization module provides utilities to standardize common metadata fields across Canadian public datasets while preserving provider-specific information. This enables consistent data processing pipelines across different data sources.
+
+### Key Features
+
+- **Time normalization**: Parse and standardize dates or periods (ISO 8601 format)
+- **Frequency normalization**: Standardize frequency labels (monthly, annual, quarterly, etc.)
+- **Geographic normalization**: Normalize Canadian geographic labels with standard codes
+- **Unit handling**: Standardize measurement units with proper symbols and multipliers
+
+### Basic Usage
+
+```python
+from publicdata_ca import (
+    normalize_frequency,
+    parse_date,
+    parse_period,
+    normalize_geo,
+    normalize_unit,
+    normalize_dataset_metadata,
+)
+
+# Normalize frequency labels
+normalize_frequency('Monthly')  # Returns 'monthly'
+normalize_frequency('Q')        # Returns 'quarterly'
+
+# Parse dates to ISO format
+parse_date('2023-01')   # Returns '2023-01-01'
+parse_date('2023-Q1')   # Returns '2023-01-01'
+
+# Parse periods with frequency
+period = parse_period('2023-01', 'monthly')
+print(period.start_date)  # '2023-01-01'
+print(period.end_date)    # '2023-01-31'
+
+# Normalize geography
+geo = normalize_geo('Ontario')
+print(geo.code)   # 'CA-ON'
+print(geo.level)  # 'province'
+
+# Normalize units
+unit = normalize_unit('Thousands of dollars')
+print(unit.symbol)      # '$'
+print(unit.multiplier)  # 1000.0
+
+# Comprehensive metadata normalization
+metadata = {
+    'frequency': 'Monthly',
+    'geo': 'Ontario',
+    'unit': 'Dollars',
+    'period': '2023-01',
+    'custom_field': 'preserved'
+}
+normalized = normalize_dataset_metadata(metadata)
+# Original fields are preserved, normalized fields added with 'normalized_' prefix
+```
+
+### Design Principles
+
+1. **Preserve provider-specific data**: Original fields are kept intact, normalized values are added
+2. **Minimal schema**: Support common patterns while allowing flexibility
+3. **Fail gracefully**: Unknown values are passed through with minimal transformation
+4. **Reference tracking**: Raw values are stored with `raw_` prefix for provenance
+
+### Example Output
+
+See `examples/normalization_demo.py` for a comprehensive demonstration:
+
+```bash
+python examples/normalization_demo.py
+```
+
+This shows normalization of frequencies, dates, periods, geographies, and units with real examples from Canadian datasets.
 
 ## Profiles System
 
