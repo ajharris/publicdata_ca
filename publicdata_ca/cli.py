@@ -14,7 +14,7 @@ from publicdata_ca.catalog import Catalog
 from publicdata_ca.providers.statcan import download_statcan_table, search_statcan_tables
 from publicdata_ca.providers.cmhc import download_cmhc_asset
 from publicdata_ca.manifest import build_manifest_file
-from publicdata_ca.datasets import refresh_datasets, DEFAULT_DATASETS
+from publicdata_ca.datasets import refresh_datasets, DEFAULT_DATASETS, export_run_report
 from publicdata_ca.profiles import list_profiles, run_profile, PROFILES_DIR
 
 
@@ -131,6 +131,13 @@ def cmd_refresh(args):
             datasets=datasets_to_refresh,
             force_download=args.force
         )
+        
+        # Export run report if requested
+        if args.report:
+            report_format = args.report_format or 'csv'
+            report_output = args.report_output or (args.output or './data')
+            report_path = export_run_report(report, report_output, format=report_format)
+            print(f"\n✓ Run report exported: {report_path}")
         
         # Display results summary
         print("\n" + "="*60)
@@ -257,6 +264,13 @@ def cmd_profile(args):
                 force_download=args.force
             )
             
+            # Export run report if requested
+            if args.report:
+                report_format = args.report_format or 'csv'
+                report_output = args.report_output or (args.output or './data')
+                report_path = export_run_report(report, report_output, format=report_format)
+                print(f"\n✓ Run report exported: {report_path}")
+            
             # Display results summary
             print("\n" + "="*60)
             print("PROFILE RUN SUMMARY")
@@ -374,6 +388,20 @@ def main():
         '-o', '--output',
         help='Output directory for manifest (default: ./data)'
     )
+    refresh_parser.add_argument(
+        '-r', '--report',
+        action='store_true',
+        help='Export run report summarizing changes and failures'
+    )
+    refresh_parser.add_argument(
+        '--report-format',
+        choices=['csv', 'json'],
+        help='Run report format (default: csv)'
+    )
+    refresh_parser.add_argument(
+        '--report-output',
+        help='Output path for run report (default: same as --output)'
+    )
     refresh_parser.set_defaults(func=cmd_refresh)
     
     # Manifest command
@@ -418,6 +446,20 @@ def main():
     profile_parser.add_argument(
         '-o', '--output',
         help='Output directory for manifest (default: ./data)'
+    )
+    profile_parser.add_argument(
+        '-r', '--report',
+        action='store_true',
+        help='Export run report summarizing changes and failures'
+    )
+    profile_parser.add_argument(
+        '--report-format',
+        choices=['csv', 'json'],
+        help='Run report format (default: csv)'
+    )
+    profile_parser.add_argument(
+        '--report-output',
+        help='Output path for run report (default: same as --output)'
     )
     profile_parser.set_defaults(func=cmd_profile)
     

@@ -353,6 +353,66 @@ def refresh_datasets(
     return pd.DataFrame(refresh_records)
 
 
+def export_run_report(
+    report: pd.DataFrame,
+    output_path: str | Path,
+    format: str = 'csv'
+) -> str:
+    """
+    Export a run report from refresh_datasets to CSV or JSON format.
+    
+    This function saves the dataset refresh report to a file for tracking
+    what changed, what failed, and why during the run. The report includes
+    detailed information about each dataset's download status.
+    
+    Args:
+        report: DataFrame from refresh_datasets() containing run results.
+        output_path: Path where the report file will be saved.
+            If a directory is provided, a timestamped filename will be generated.
+        format: Output format - 'csv' or 'json' (default: 'csv').
+    
+    Returns:
+        Path to the exported report file.
+    
+    Example:
+        >>> report = refresh_datasets()
+        >>> report_path = export_run_report(report, './data/reports', format='csv')
+        >>> print(f"Report saved to: {report_path}")
+        
+        >>> # Export as JSON
+        >>> report_path = export_run_report(report, './data/reports/run.json', format='json')
+    
+    Notes:
+        - CSV format is suitable for spreadsheet analysis
+        - JSON format preserves data types and is more structured
+        - Timestamped filenames are generated when a directory is provided
+    """
+    output_path_obj = Path(output_path)
+    
+    # If output_path is a directory, generate a timestamped filename
+    if output_path_obj.is_dir() or (not output_path_obj.suffix and not output_path_obj.exists()):
+        output_path_obj.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
+        if format == 'json':
+            filename = f"run_report_{timestamp}.json"
+        else:
+            filename = f"run_report_{timestamp}.csv"
+        output_path_obj = output_path_obj / filename
+    else:
+        # Create parent directory if it doesn't exist
+        output_path_obj.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Export based on format
+    if format == 'json':
+        # Convert DataFrame to JSON with proper formatting
+        report.to_json(output_path_obj, orient='records', indent=2, date_format='iso')
+    else:  # csv
+        # Export as CSV
+        report.to_csv(output_path_obj, index=False)
+    
+    return str(output_path_obj)
+
+
 __all__ = [
     "Dataset",
     "DEFAULT_DATASETS",
@@ -361,4 +421,5 @@ __all__ = [
     "ensure_raw_destination",
     "build_dataset_catalog",
     "refresh_datasets",
+    "export_run_report",
 ]

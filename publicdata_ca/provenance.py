@@ -4,6 +4,19 @@ Provenance metadata utilities for tracking data file origins and integrity.
 This module provides functionality to write sidecar metadata files (.meta.json)
 alongside downloaded data files, recording source URLs, timestamps, hashes,
 and content types for reproducibility and verification.
+
+Metadata Schema Version: 1.0
+Schema fields:
+  - schema_version: Version of the metadata schema (for backward compatibility)
+  - file: Filename of the data file
+  - source_url: URL where the file was downloaded from
+  - downloaded_at: ISO 8601 timestamp of download (UTC)
+  - file_size_bytes: Size of the file in bytes
+  - content_type: HTTP Content-Type header value
+  - hash: File integrity hash (algorithm and value)
+  - provider: Data provider information
+    - name: Provider identifier (e.g., 'statcan', 'cmhc', 'ckan')
+    - specific: Provider-specific metadata (optional)
 """
 
 import hashlib
@@ -11,6 +24,9 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any
+
+# Current metadata schema version
+METADATA_SCHEMA_VERSION = "1.0"
 
 
 def calculate_file_hash(file_path: str, algorithm: str = 'sha256') -> str:
@@ -45,26 +61,38 @@ def write_provenance_metadata(
     source_url: str,
     content_type: Optional[str] = None,
     additional_metadata: Optional[Dict[str, Any]] = None,
-    hash_algorithm: str = 'sha256'
+    hash_algorithm: str = 'sha256',
+    provider_name: Optional[str] = None,
+    provider_specific: Optional[Dict[str, Any]] = None
 ) -> str:
     """
-    Write provenance metadata as a .meta.json sidecar file.
+    Write provenance metadata as a .meta.json sidecar file using unified schema.
     
-    Creates a JSON file alongside the downloaded file containing:
-    - Source URL(s)
-    - Download timestamp
-    - File hash for integrity verification
-    - Content type
-    - File size
-    - Additional metadata (optional)
+    Creates a JSON file alongside the downloaded file containing standardized
+    provenance information following the unified metadata schema v1.0.
+    
+    Unified Schema Fields:
+    - schema_version: Version of the metadata schema (for backward compatibility)
+    - file: Filename of the data file
+    - source_url: URL where the file was downloaded from
+    - downloaded_at: ISO 8601 timestamp of download (UTC)
+    - file_size_bytes: Size of the file in bytes
+    - content_type: HTTP Content-Type header value (optional)
+    - hash: File integrity hash (algorithm and value)
+    - provider: Data provider information
+      - name: Provider identifier (e.g., 'statcan', 'cmhc', 'ckan')
+      - specific: Provider-specific metadata (optional)
     
     Args:
         file_path: Path to the data file.
         source_url: URL where the file was downloaded from.
         content_type: HTTP Content-Type header value (optional).
-        additional_metadata: Additional metadata to include (optional).
-            Can include provider-specific info like table IDs, titles, etc.
+        additional_metadata: DEPRECATED. Additional metadata to include (optional).
+            For backward compatibility only. Use provider_specific instead.
         hash_algorithm: Hash algorithm to use (default: 'sha256').
+        provider_name: Name of the data provider (e.g., 'statcan', 'cmhc').
+        provider_specific: Provider-specific metadata fields (optional).
+            Examples: {'pid': '18100004', 'table_number': '18-10-0004'} for StatsCan.
     
     Returns:
         Path to the created metadata file.
@@ -74,7 +102,8 @@ def write_provenance_metadata(
         ...     '/data/table.csv',
         ...     'https://example.com/table.csv',
         ...     content_type='text/csv',
-        ...     additional_metadata={'table_id': '12345', 'provider': 'statcan'}
+        ...     provider_name='statcan',
+        ...     provider_specific={'pid': '18100004', 'table_number': '18-10-0004', 'title': 'CPI Table'}
         ... )
         '/data/table.csv.meta.json'
     """
@@ -90,8 +119,9 @@ def write_provenance_metadata(
     # Get file size
     file_size = file_path_obj.stat().st_size
     
-    # Build metadata
+    # Build metadata using unified schema
     metadata = {
+        "schema_version": METADATA_SCHEMA_VERSION,
         "file": str(file_path_obj.name),
         "source_url": source_url,
         "downloaded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -106,9 +136,36 @@ def write_provenance_metadata(
     if content_type:
         metadata["content_type"] = content_type
     
-    # Add additional metadata if provided
+    # Build provider section
+    if provider_name or provider_specific or additional_metadata:
+        metadata["provider"] = {}
+        
+        # Handle provider_name
+        if provider_name:
+            metadata["provider"]["name"] = provider_name
+        elif additional_metadata and "provider" in additional_metadata:
+            # Extract from additional_metadata for backward compatibility
+            metadata["provider"]["name"] = additional_metadata["provider"]
+        
+        # Handle provider_specific
+        if provider_specific:
+            metadata["provider"]["specific"] = provider_specific
+    
+    # Handle backward compatibility with additional_metadata
+    # Merge fields that aren't part of the standard schema into provider.specific
     if additional_metadata:
-        metadata.update(additional_metadata)
+        # Extract non-standard fields
+        standard_fields = {"schema_version", "file", "source_url", "downloaded_at", 
+                          "file_size_bytes", "hash", "content_type", "provider"}
+        
+        for key, value in additional_metadata.items():
+            if key not in standard_fields and key != "provider":
+                # Add to provider.specific section
+                if "provider" not in metadata:
+                    metadata["provider"] = {}
+                if "specific" not in metadata["provider"]:
+                    metadata["provider"]["specific"] = {}
+                metadata["provider"]["specific"][key] = value
     
     # Write metadata file
     meta_file_path = file_path_obj.parent / f"{file_path_obj.name}.meta.json"
