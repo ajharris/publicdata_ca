@@ -616,6 +616,11 @@ python examples/ckan_provider_demo.py
 - `publicdata_ca/manifest.py` — utilities for building and validating download manifests.
 - `profiles/` — directory containing YAML profile files for organizing dataset collections.
 - `tests/` — pytest suite covering the high-level catalog and manifest flows.
+- `docs/` — documentation including guides for extending the package.
+
+## Contributing
+
+Interested in adding a new data provider? See [docs/ADDING_A_PROVIDER.md](docs/ADDING_A_PROVIDER.md) for a comprehensive guide on implementing, testing, and registering new providers.
 
 ## Normalization Utilities
 
