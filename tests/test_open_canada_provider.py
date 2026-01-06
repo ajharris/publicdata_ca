@@ -1,7 +1,6 @@
 """Tests for the Open Canada provider."""
 
 import json
-import pytest
 from unittest.mock import Mock, patch
 from publicdata_ca.provider import Provider, DatasetRef
 from publicdata_ca.providers.open_canada import (

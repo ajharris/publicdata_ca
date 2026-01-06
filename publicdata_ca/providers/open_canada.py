@@ -91,8 +91,6 @@ class OpenCanadaProvider(CKANProvider):
             - Use pagination for large result sets
             - Query syntax supports SOLR operators (AND, OR, NOT)
         """
-        # Delegate to parent CKANProvider
-        # The base_url is already set in __init__
         return super().search(query, **kwargs)
     
     def resolve(self, ref: DatasetRef) -> Dict[str, Any]:
@@ -129,7 +127,6 @@ class OpenCanadaProvider(CKANProvider):
             - Format filtering is case-insensitive
             - Returns empty list if no resources match filters
         """
-        # Delegate to parent CKANProvider
         return super().resolve(ref)
     
     def fetch(
@@ -179,5 +176,4 @@ class OpenCanadaProvider(CKANProvider):
             - Files are named based on resource names from the portal
             - Partial failures are logged but don't stop other downloads
         """
-        # Delegate to parent CKANProvider
         return super().fetch(ref, output_dir, **kwargs)
