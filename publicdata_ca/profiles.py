@@ -171,23 +171,29 @@ class Profile:
         }
         
         if self.datasets:
-            result["datasets"] = [
-                {
+            result["datasets"] = []
+            for ds in self.datasets:
+                ds_dict = {
                     "provider": ds.provider,
                     "id": ds.id,
-                    **({"output": ds.output} if ds.output else {}),
-                    **({"params": ds.params} if ds.params else {})
                 }
-                for ds in self.datasets
-            ]
+                if ds.output:
+                    ds_dict["output"] = ds.output
+                if ds.params:
+                    ds_dict["params"] = ds.params
+                result["datasets"].append(ds_dict)
         
         if self.search:
-            result["search"] = {
-                **({"provider": self.search.provider} if self.search.provider else {}),
-                **({"query": self.search.query} if self.search.query else {}),
-                **({"filters": self.search.filters} if self.search.filters else {}),
-                **({"limit": self.search.limit} if self.search.limit else {})
-            }
+            search_dict: Dict[str, Any] = {}
+            if self.search.provider:
+                search_dict["provider"] = self.search.provider
+            if self.search.query:
+                search_dict["query"] = self.search.query
+            if self.search.filters:
+                search_dict["filters"] = self.search.filters
+            if self.search.limit:
+                search_dict["limit"] = self.search.limit
+            result["search"] = search_dict
         
         if self.output_dir:
             result["output_dir"] = self.output_dir
@@ -221,7 +227,7 @@ def load_profile(profile_path: str | Path) -> Profile:
     if yaml is None:
         raise ImportError(
             "PyYAML is required to load profiles. "
-            "Install it with: pip install pyyaml"
+            "Install it with: pip install PyYAML"
         )
     
     path = Path(profile_path)
@@ -261,7 +267,7 @@ def save_profile(profile: Profile, profile_path: str | Path) -> Path:
     if yaml is None:
         raise ImportError(
             "PyYAML is required to save profiles. "
-            "Install it with: pip install pyyaml"
+            "Install it with: pip install PyYAML"
         )
     
     path = Path(profile_path)
