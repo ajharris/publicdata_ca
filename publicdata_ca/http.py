@@ -95,7 +95,8 @@ def download_file(
     output_path: str,
     max_retries: int = 3,
     headers: Optional[Dict[str, str]] = None,
-    chunk_size: int = 8192
+    chunk_size: int = 8192,
+    validate_content_type: bool = False
 ) -> str:
     """
     Download a file from a URL to a local path with retry logic and streaming support.
@@ -110,19 +111,36 @@ def download_file(
         headers: Optional dictionary of HTTP headers.
         chunk_size: Size of chunks to read at a time in bytes (default: 8192).
             Larger chunks can be faster but use more memory.
+        validate_content_type: If True, validates that response is not HTML (default: False).
+            Raises ValueError if HTML content is detected.
     
     Returns:
         Path to the downloaded file.
     
     Raises:
         URLError: If download fails after all retries.
+        ValueError: If validate_content_type=True and HTML content is detected.
     
     Example:
         >>> # Download a large file with streaming
         >>> download_file('https://example.com/large_dataset.csv', './data.csv')
         './data.csv'
+        
+        >>> # Download with content type validation
+        >>> download_file('https://example.com/data.csv', './data.csv', validate_content_type=True)
+        './data.csv'
     """
     response = retry_request(url, max_retries=max_retries, headers=headers)
+    
+    # Validate content type if requested
+    if validate_content_type:
+        content_type = response.headers.get('Content-Type', '').lower()
+        # Check for HTML or XHTML content (using 'in' to match variants like 'application/xhtml+xml')
+        if 'text/html' in content_type or 'application/xhtml' in content_type:
+            raise ValueError(
+                f"Expected data file but received HTML content (Content-Type: {content_type}). "
+                f"URL may be invalid or may have changed. Please verify the URL points to a data file."
+            )
     
     with open(output_path, 'wb') as f:
         while True:
