@@ -9,6 +9,7 @@ import zipfile
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from publicdata_ca.http import download_file
+from publicdata_ca.provider import Provider, DatasetRef
 
 
 def download_statcan_table(
@@ -329,3 +330,113 @@ def _format_table_number(pid: str) -> str:
     if len(pid) == 8:
         return f"{pid[:2]}-{pid[2:4]}-{pid[4:]}"
     return pid
+
+
+class StatCanProvider(Provider):
+    """
+    Statistics Canada data provider implementation.
+    
+    This provider implements the standard Provider interface for StatsCan datasets.
+    It supports searching (placeholder), resolving table references to download URLs,
+    and fetching StatsCan tables via the WDS API.
+    
+    Example:
+        >>> provider = StatCanProvider()
+        >>> ref = DatasetRef(provider='statcan', id='18100004')
+        >>> result = provider.fetch(ref, './data/raw')
+        >>> print(result['files'])
+    """
+    
+    def __init__(self, name: str = 'statcan'):
+        """Initialize the StatsCan provider."""
+        super().__init__(name)
+    
+    def search(self, query: str, **kwargs) -> List[DatasetRef]:
+        """
+        Search for StatsCan tables by keyword.
+        
+        Args:
+            query: Search query string
+            **kwargs: Additional search parameters
+        
+        Returns:
+            List of DatasetRef objects matching the query
+        
+        Note:
+            This is a placeholder implementation. Full search functionality
+            would integrate with StatsCan's search/discovery API.
+        """
+        # Placeholder - would integrate with StatsCan's search API
+        # For now, return empty list
+        return []
+    
+    def resolve(self, ref: DatasetRef) -> Dict[str, Any]:
+        """
+        Resolve a StatsCan dataset reference into download metadata.
+        
+        Args:
+            ref: Dataset reference with StatsCan table ID
+        
+        Returns:
+            Dictionary containing download URL, format, and metadata
+        
+        Example:
+            >>> ref = DatasetRef(provider='statcan', id='18100004')
+            >>> metadata = provider.resolve(ref)
+            >>> print(metadata['url'])
+        """
+        # Normalize the table ID
+        pid = _normalize_pid(ref.id)
+        
+        # Get language from params or default to 'en'
+        language = ref.params.get('language', 'en')
+        
+        # Build WDS URL
+        url = _build_wds_url(pid, language)
+        
+        return {
+            'url': url,
+            'format': 'csv',
+            'pid': pid,
+            'table_number': _format_table_number(pid),
+            'title': ref.metadata.get('title', f'StatsCan Table {pid}'),
+            'provider': self.name,
+        }
+    
+    def fetch(
+        self,
+        ref: DatasetRef,
+        output_dir: str,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Download a StatsCan table to the specified output directory.
+        
+        Args:
+            ref: Dataset reference with StatsCan table ID
+            output_dir: Directory where files will be saved
+            **kwargs: Additional download parameters (skip_existing, max_retries, etc.)
+        
+        Returns:
+            Dictionary containing downloaded files and metadata
+        
+        Example:
+            >>> ref = DatasetRef(provider='statcan', id='18100004')
+            >>> result = provider.fetch(ref, './data/raw')
+            >>> print(result['files'])
+        """
+        # Extract parameters
+        skip_existing = kwargs.get('skip_existing', True)
+        max_retries = kwargs.get('max_retries', 3)
+        language = ref.params.get('language', 'en')
+        
+        # Use the existing download_statcan_table function
+        result = download_statcan_table(
+            table_id=ref.id,
+            output_dir=output_dir,
+            max_retries=max_retries,
+            skip_existing=skip_existing,
+            language=language
+        )
+        
+        return result

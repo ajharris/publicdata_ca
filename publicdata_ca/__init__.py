@@ -19,6 +19,16 @@ from publicdata_ca.datasets import (
 )
 from publicdata_ca.http import get_default_headers, retry_request
 from publicdata_ca.manifest import build_manifest_file, build_run_manifest
+from publicdata_ca.provider import (
+    Provider,
+    DatasetRef,
+    ProviderRegistry,
+    get_registry,
+)
+from publicdata_ca.providers import (
+    StatCanProvider,
+    CMHCProvider,
+)
 
 __all__ = [
     "Catalog",
@@ -30,4 +40,10 @@ __all__ = [
     "retry_request",
     "get_default_headers",
     "refresh_datasets",
+    "Provider",
+    "DatasetRef",
+    "ProviderRegistry",
+    "get_registry",
+    "StatCanProvider",
+    "CMHCProvider",
 ]
