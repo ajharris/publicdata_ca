@@ -434,3 +434,255 @@ def test_download_file_metadata_disabled():
             # Verify metadata file was NOT created
             meta_file = output_path + '.meta.json'
             assert not os.path.exists(meta_file)
+
+
+def test_download_file_with_http_cache_saves_metadata():
+    """Test that download_file saves HTTP cache metadata when caching is enabled."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        test_data = b'test,data\n1,2\n'
+        
+        mock_response = Mock()
+        mock_response.headers = {
+            'Content-Type': 'text/csv',
+            'ETag': '"abc123"',
+            'Last-Modified': 'Wed, 21 Oct 2015 07:28:00 GMT'
+        }
+        mock_response.read.side_effect = [test_data, b'']
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            download_file('https://example.com/data.csv', output_path, write_metadata=False, use_cache=True)
+            
+            # Verify file was downloaded
+            assert os.path.exists(output_path)
+            
+            # Verify HTTP cache metadata was created
+            cache_file = output_path + '.http_cache.json'
+            assert os.path.exists(cache_file)
+            
+            # Verify cache contents
+            import json
+            with open(cache_file, 'r') as f:
+                cache_data = json.load(f)
+            
+            assert cache_data['etag'] == '"abc123"'
+            assert cache_data['last_modified'] == 'Wed, 21 Oct 2015 07:28:00 GMT'
+            assert cache_data['url'] == 'https://example.com/data.csv'
+
+
+def test_download_file_with_cache_disabled_no_metadata():
+    """Test that HTTP cache metadata is not saved when caching is disabled."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        test_data = b'test data'
+        
+        mock_response = Mock()
+        mock_response.headers = {
+            'Content-Type': 'text/csv',
+            'ETag': '"abc123"'
+        }
+        mock_response.read.side_effect = [test_data, b'']
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            download_file('https://example.com/data.csv', output_path, write_metadata=False, use_cache=False)
+            
+            # Verify file was downloaded
+            assert os.path.exists(output_path)
+            
+            # Verify HTTP cache metadata was NOT created
+            cache_file = output_path + '.http_cache.json'
+            assert not os.path.exists(cache_file)
+
+
+def test_download_file_revalidation_304_not_modified():
+    """Test that download_file handles 304 Not Modified responses correctly."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        original_data = b'original,data\n1,2\n'
+        
+        # Create existing file with cache metadata
+        with open(output_path, 'wb') as f:
+            f.write(original_data)
+        
+        from publicdata_ca.http_cache import save_cache_metadata
+        save_cache_metadata(
+            output_path,
+            etag='"abc123"',
+            last_modified='Wed, 21 Oct 2015 07:28:00 GMT',
+            url='https://example.com/data.csv'
+        )
+        
+        # Mock 304 Not Modified response
+        def mock_retry_with_304(url, max_retries=3, headers=None):
+            # Check that conditional headers were sent
+            assert headers is not None
+            assert 'If-None-Match' in headers
+            assert headers['If-None-Match'] == '"abc123"'
+            assert 'If-Modified-Since' in headers
+            
+            # Raise HTTPError with 304 status
+            raise HTTPError(url, 304, 'Not Modified', {}, None)
+        
+        with patch('publicdata_ca.http.retry_request', side_effect=mock_retry_with_304):
+            result = download_file('https://example.com/data.csv', output_path, write_metadata=False, use_cache=True)
+            
+            # Verify file path is returned
+            assert result == output_path
+            
+            # Verify original file is unchanged
+            with open(output_path, 'rb') as f:
+                assert f.read() == original_data
+
+
+def test_download_file_revalidation_200_file_changed():
+    """Test that download_file downloads when server returns 200 (file changed)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        original_data = b'original,data\n1,2\n'
+        new_data = b'new,data\n3,4\n'
+        
+        # Create existing file with cache metadata
+        with open(output_path, 'wb') as f:
+            f.write(original_data)
+        
+        from publicdata_ca.http_cache import save_cache_metadata
+        save_cache_metadata(
+            output_path,
+            etag='"abc123"',
+            url='https://example.com/data.csv'
+        )
+        
+        # Mock response with new data and new ETag
+        mock_response = Mock()
+        mock_response.headers = {
+            'Content-Type': 'text/csv',
+            'ETag': '"xyz789"'  # Different ETag
+        }
+        mock_response.read.side_effect = [new_data, b'']
+        
+        def mock_retry_with_conditional(url, max_retries=3, headers=None):
+            # Verify conditional headers were sent
+            assert 'If-None-Match' in headers
+            return mock_response
+        
+        with patch('publicdata_ca.http.retry_request', side_effect=mock_retry_with_conditional):
+            result = download_file('https://example.com/data.csv', output_path, write_metadata=False, use_cache=True)
+            
+            # Verify file was updated
+            with open(output_path, 'rb') as f:
+                assert f.read() == new_data
+            
+            # Verify cache metadata was updated
+            import json
+            cache_file = output_path + '.http_cache.json'
+            with open(cache_file, 'r') as f:
+                cache_data = json.load(f)
+            assert cache_data['etag'] == '"xyz789"'
+
+
+def test_download_file_first_download_with_cache():
+    """Test first download creates cache metadata."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'new_file.csv')
+        test_data = b'test,data\n1,2\n'
+        
+        mock_response = Mock()
+        mock_response.headers = {
+            'Content-Type': 'text/csv',
+            'ETag': '"first123"'
+        }
+        mock_response.read.side_effect = [test_data, b'']
+        
+        def mock_retry_first_download(url, max_retries=3, headers=None):
+            # Should not have conditional headers on first download
+            assert 'If-None-Match' not in headers
+            assert 'If-Modified-Since' not in headers
+            return mock_response
+        
+        with patch('publicdata_ca.http.retry_request', side_effect=mock_retry_first_download):
+            download_file('https://example.com/new.csv', output_path, write_metadata=False, use_cache=True)
+            
+            # Verify cache metadata was created
+            import json
+            cache_file = output_path + '.http_cache.json'
+            assert os.path.exists(cache_file)
+            
+            with open(cache_file, 'r') as f:
+                cache_data = json.load(f)
+            assert cache_data['etag'] == '"first123"'
+
+
+def test_download_file_cache_with_only_etag():
+    """Test caching works with only ETag (no Last-Modified)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        test_data = b'test data'
+        
+        mock_response = Mock()
+        mock_response.headers = {
+            'Content-Type': 'text/csv',
+            'ETag': '"etag-only"'
+            # No Last-Modified header
+        }
+        mock_response.read.side_effect = [test_data, b'']
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            download_file('https://example.com/data.csv', output_path, write_metadata=False, use_cache=True)
+            
+            import json
+            cache_file = output_path + '.http_cache.json'
+            with open(cache_file, 'r') as f:
+                cache_data = json.load(f)
+            
+            assert cache_data['etag'] == '"etag-only"'
+            assert cache_data['last_modified'] is None
+
+
+def test_download_file_cache_with_only_last_modified():
+    """Test caching works with only Last-Modified (no ETag)."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        test_data = b'test data'
+        
+        mock_response = Mock()
+        mock_response.headers = {
+            'Content-Type': 'text/csv',
+            'Last-Modified': 'Thu, 22 Oct 2015 08:30:00 GMT'
+            # No ETag header
+        }
+        mock_response.read.side_effect = [test_data, b'']
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            download_file('https://example.com/data.csv', output_path, write_metadata=False, use_cache=True)
+            
+            import json
+            cache_file = output_path + '.http_cache.json'
+            with open(cache_file, 'r') as f:
+                cache_data = json.load(f)
+            
+            assert cache_data['etag'] is None
+            assert cache_data['last_modified'] == 'Thu, 22 Oct 2015 08:30:00 GMT'
+
+
+def test_download_file_no_cache_headers_no_metadata():
+    """Test that no cache metadata is saved when server doesn't send cache headers."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        test_data = b'test data'
+        
+        mock_response = Mock()
+        mock_response.headers = {
+            'Content-Type': 'text/csv'
+            # No ETag or Last-Modified
+        }
+        mock_response.read.side_effect = [test_data, b'']
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            download_file('https://example.com/data.csv', output_path, write_metadata=False, use_cache=True)
+            
+            # Verify file was downloaded
+            assert os.path.exists(output_path)
+            
+            # Verify no cache metadata was created (no headers to cache)
+            cache_file = output_path + '.http_cache.json'
+            assert not os.path.exists(cache_file)

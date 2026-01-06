@@ -69,6 +69,50 @@ print(report[['dataset', 'provider', 'result', 'notes']])
 
 ## Key Features
 
+### HTTP Caching with ETag and Last-Modified
+
+The HTTP download utilities support intelligent caching using ETag and Last-Modified headers to avoid re-downloading unchanged files. This feature is particularly beneficial for large datasets.
+
+**How it works:**
+1. **First download**: File is downloaded and server's ETag/Last-Modified headers are saved
+2. **Subsequent downloads**: Conditional request headers (If-None-Match/If-Modified-Since) are sent
+3. **304 Not Modified**: If file hasn't changed, download is skipped entirely
+4. **200 OK**: If file changed, new version is downloaded and cache is updated
+
+Example usage:
+```python
+from publicdata_ca.http import download_file
+
+# Download with caching enabled (default)
+download_file(
+    'https://example.com/large_dataset.csv',
+    './data/dataset.csv',
+    use_cache=True  # This is the default
+)
+
+# On subsequent runs, if the file hasn't changed on the server,
+# the download will be skipped (server returns 304 Not Modified)
+
+# Force re-download without using cache
+download_file(
+    'https://example.com/large_dataset.csv',
+    './data/dataset.csv',
+    use_cache=False  # Bypass cache completely
+)
+```
+
+**Cache metadata storage:**
+- Cache metadata is stored alongside downloaded files with `.http_cache.json` extension
+- Contains ETag, Last-Modified, source URL, and cache timestamp
+- Automatically cleaned up when files are deleted
+- Excluded from version control via `.gitignore`
+
+**Benefits:**
+- **Bandwidth savings**: Skip downloads when files haven't changed
+- **Faster refreshes**: Reduce time for data refresh operations
+- **Server-friendly**: Reduces load on data provider servers
+- **Automatic**: Works transparently when servers support caching headers
+
 ### CMHC Landing Page Resolver
 The CMHC landing page resolver now includes advanced URL resolution with:
 - **Ranking**: Automatically prioritizes candidates based on file format (XLSX > CSV > XLS > ZIP), URL structure, and other quality indicators
@@ -474,6 +518,8 @@ python examples/ckan_provider_demo.py
 - `publicdata_ca/providers/` — provider integrations such as StatsCan, CMHC, Open Canada, CKAN, Socrata, SDMX, and Bank of Canada Valet.
 - `publicdata_ca/resolvers/` — HTML scrapers that translate landing pages into direct asset URLs.
 - `publicdata_ca/url_cache.py` — URL caching utilities for CMHC resolved URLs.
+- `publicdata_ca/http.py` — HTTP utilities with retry logic, streaming downloads, and optional HTTP caching.
+- `publicdata_ca/http_cache.py` — HTTP cache metadata management for ETag/Last-Modified headers.
 - `publicdata_ca/manifest.py` — utilities for building and validating download manifests.
 - `profiles/` — directory containing YAML profile files for organizing dataset collections.
 - `tests/` — pytest suite covering the high-level catalog and manifest flows.
