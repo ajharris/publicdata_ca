@@ -192,11 +192,85 @@ CMHC landing pages can change frequently, causing download failures. Here's how 
 
 - `publicdata_ca/catalog.py` — in-memory catalog for registering and searching dataset metadata.
 - `publicdata_ca/datasets.py` — curated dataset definitions, pandas helpers, and the `refresh_datasets()` function for automated downloads.
+- `publicdata_ca/profiles.py` — YAML-based profiles system for multi-project dataset refresh workflows.
 - `publicdata_ca/providers/` — provider integrations such as StatsCan table metadata and CMHC landing-page handling.
 - `publicdata_ca/resolvers/` — HTML scrapers that translate landing pages into direct asset URLs.
 - `publicdata_ca/url_cache.py` — URL caching utilities for CMHC resolved URLs.
 - `publicdata_ca/manifest.py` — utilities for building and validating download manifests.
+- `profiles/` — directory containing YAML profile files for organizing dataset collections.
 - `tests/` — pytest suite covering the high-level catalog and manifest flows.
+
+## Profiles System
+
+The profiles system allows you to organize datasets into logical collections defined in YAML files. This is ideal for:
+- **Multi-project workflows**: Define separate profiles for different projects or analyses
+- **Reproducible data pipelines**: Version-control your data refresh configurations
+- **Team collaboration**: Share standard dataset collections across your organization
+- **Selective refresh**: Run refreshes on specific subsets of datasets
+
+### Profile Structure
+
+A profile is a YAML file that defines:
+- **name**: Unique profile identifier
+- **description**: Human-readable description of the profile
+- **datasets**: List of dataset specifications with provider, ID, and output paths
+- **output_dir**: Optional default output directory for all datasets
+- **options**: Optional refresh options (e.g., `skip_existing`)
+
+### Example Profile
+
+```yaml
+name: economics
+description: Core economic indicators for Canada
+
+datasets:
+  - provider: statcan
+    id: "18100004"
+    output: data/raw/cpi_all_items_18100004.csv
+    params:
+      metric: "Consumer Price Index, all-items (NSA)"
+      frequency: "Monthly"
+  
+  - provider: statcan
+    id: "14100459"
+    output: data/raw/unemployment_rate_14100459.csv
+    params:
+      metric: "Labour force characteristics by CMA"
+      frequency: "Monthly"
+
+output_dir: data/raw
+options:
+  skip_existing: true
+```
+
+### Working with Profiles
+
+**Python API:**
+```python
+from publicdata_ca import run_profile, load_profile, list_profiles
+
+# List available profiles
+profiles = list_profiles()
+
+# Run a profile
+report = run_profile("economics")
+print(report[['dataset', 'result', 'notes']])
+
+# Load and inspect a profile
+profile = load_profile("profiles/housing.yaml")
+```
+
+**CLI:**
+```bash
+# List profiles
+publicdata profile list
+
+# Run a profile
+publicdata profile run economics
+
+# Run with options
+publicdata profile run housing --force --verbose --manifest
+```
 
 ## Catalog Design
 
@@ -419,6 +493,85 @@ publicdata manifest create --output ./data
 
 # Validate a manifest
 publicdata manifest validate --manifest-file ./data/manifest.json
+```
+
+### Manage profiles
+
+Profiles allow you to define collections of datasets to refresh together using YAML configuration files. This is ideal for managing multiple related datasets or creating project-specific refresh workflows.
+
+**List available profiles:**
+
+```bash
+# List all profiles in the profiles/ directory
+publicdata profile list
+```
+
+**Run a profile:**
+
+```bash
+# Run a profile by name
+publicdata profile run economics
+
+# Run with force re-download
+publicdata profile run housing --force
+
+# Show detailed results
+publicdata profile run population --verbose
+
+# Create a manifest after running the profile
+publicdata profile run economics --manifest
+```
+
+**Create a profile:**
+
+Profiles are YAML files stored in the `profiles/` directory. Here's an example profile (`profiles/economics.yaml`):
+
+```yaml
+name: economics
+description: Core economic indicators for Canada including CPI, unemployment, and income
+
+datasets:
+  - provider: statcan
+    id: "18100004"
+    output: data/raw/cpi_all_items_18100004.csv
+    params:
+      metric: "Consumer Price Index, all-items (NSA)"
+      frequency: "Monthly"
+      geo_scope: "Canada + provinces"
+  
+  - provider: statcan
+    id: "14100459"
+    output: data/raw/unemployment_rate_14100459.csv
+    params:
+      metric: "Labour force characteristics by CMA (3-month moving avg, SA)"
+      frequency: "Monthly"
+      geo_scope: "Census metropolitan areas"
+
+output_dir: data/raw
+options:
+  skip_existing: true
+```
+
+**Using profiles programmatically:**
+
+```python
+from publicdata_ca import run_profile, load_profile, list_profiles
+
+# List all available profiles
+profiles = list_profiles()
+print(f"Available profiles: {profiles}")
+
+# Run a profile by name
+report = run_profile("economics")
+print(report[['dataset', 'result', 'notes']])
+
+# Load and inspect a profile
+profile = load_profile("profiles/housing.yaml")
+print(f"Profile: {profile.name}")
+print(f"Datasets: {len(profile.datasets)}")
+
+# Run with custom options
+report = run_profile("economics", force_download=True)
 ```
 
 ## Running tests
