@@ -10,12 +10,12 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+from urllib.parse import urlparse
 
 from publicdata_ca.resolvers.cmhc_landing import (
     resolve_cmhc_landing_page,
     extract_metadata_from_page
 )
-
 
 # Get the path to test fixtures
 FIXTURES_DIR = Path(__file__).parent / 'fixtures' / 'cmhc'
@@ -76,7 +76,7 @@ def test_resolve_cmhc_landing_page_with_html_fixture():
     assert any('regional-data.csv' in url for url in urls)
     
     # Should have external URL (absolute)
-    assert any('external.example.com' in url for url in urls)
+    assert any(urlparse(url).hostname == 'external.example.com' for url in urls)
 
 
 def test_resolve_cmhc_landing_page_handles_relative_urls():
