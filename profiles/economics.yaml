@@ -1,0 +1,32 @@
+# Example profile for economic indicators
+name: economics
+description: Core economic indicators for Canada including CPI, unemployment, and income
+
+datasets:
+  - provider: statcan
+    id: "18100004"
+    output: data/raw/cpi_all_items_18100004.csv
+    params:
+      metric: "Consumer Price Index, all-items (NSA)"
+      frequency: "Monthly"
+      geo_scope: "Canada + provinces"
+  
+  - provider: statcan
+    id: "14100459"
+    output: data/raw/unemployment_rate_14100459.csv
+    params:
+      metric: "Labour force characteristics by CMA (3-month moving avg, SA)"
+      frequency: "Monthly"
+      geo_scope: "Census metropolitan areas"
+  
+  - provider: statcan
+    id: "11100035"
+    output: data/raw/median_household_income_11100035.csv
+    params:
+      metric: "Median after-tax income by economic family type (CIS)"
+      frequency: "Annual"
+      geo_scope: "Canada, provinces, and major CMAs"
+
+output_dir: data/raw
+options:
+  skip_existing: true

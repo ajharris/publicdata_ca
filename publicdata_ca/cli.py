@@ -15,6 +15,7 @@ from publicdata_ca.providers.statcan import download_statcan_table, search_statc
 from publicdata_ca.providers.cmhc import download_cmhc_asset
 from publicdata_ca.manifest import build_manifest_file
 from publicdata_ca.datasets import refresh_datasets, DEFAULT_DATASETS
+from publicdata_ca.profiles import list_profiles, run_profile, PROFILES_DIR
 
 
 def cmd_search(args):
@@ -221,6 +222,102 @@ def cmd_manifest(args):
             sys.exit(1)
 
 
+def cmd_profile(args):
+    """
+    Run or manage profiles.
+    
+    Args:
+        args: Parsed command-line arguments.
+    """
+    if args.action == 'list':
+        # List available profiles
+        profiles = list_profiles()
+        
+        if not profiles:
+            print(f"No profiles found in {PROFILES_DIR}")
+            print("\nTo create a profile, add a YAML file to the profiles/ directory.")
+        else:
+            print(f"Available profiles ({len(profiles)}):")
+            for profile_name in profiles:
+                print(f"  - {profile_name}")
+    
+    elif args.action == 'run':
+        # Run a profile
+        if not args.profile:
+            print("Error: profile name required for 'run' action")
+            print("Usage: publicdata profile run <profile-name>")
+            sys.exit(1)
+        
+        profile_name = args.profile
+        print(f"Running profile: {profile_name}")
+        
+        try:
+            report = run_profile(
+                profile=profile_name,
+                force_download=args.force
+            )
+            
+            # Display results summary
+            print("\n" + "="*60)
+            print("PROFILE RUN SUMMARY")
+            print("="*60)
+            
+            # Count results by status
+            status_counts = report['result'].value_counts()
+            for status, count in status_counts.items():
+                print(f"  {status}: {count}")
+            
+            # Show detailed results if verbose or if there are errors
+            if args.verbose or 'error' in status_counts:
+                print("\n" + "="*60)
+                print("DETAILED RESULTS")
+                print("="*60)
+                for row in report.itertuples():
+                    status_symbol = "✓" if row.result in ['downloaded', 'exists'] else "✗"
+                    print(f"\n{status_symbol} {row.dataset} ({row.provider})")
+                    print(f"  Status: {row.result}")
+                    if row.notes:
+                        print(f"  Notes: {row.notes}")
+                    if row.target_file:
+                        print(f"  File: {row.target_file}")
+            
+            # Create manifest if requested
+            if args.manifest:
+                # Convert report to datasets list for manifest
+                manifest_datasets = []
+                for row in report.itertuples():
+                    if row.result in ['downloaded', 'exists'] and row.target_file:
+                        manifest_datasets.append({
+                            'dataset_id': row.dataset,
+                            'provider': row.provider,
+                            'files': [row.target_file],
+                            'status': row.result,
+                            'notes': row.notes
+                        })
+                
+                manifest_path = build_manifest_file(
+                    output_dir=args.output or './data',
+                    datasets=manifest_datasets,
+                    manifest_name=f'profile_{profile_name}_manifest.json'
+                )
+                print(f"\n✓ Manifest created: {manifest_path}")
+            
+            # Exit with error if there were any download failures
+            if 'error' in status_counts:
+                print("\n⚠ Some downloads failed. See detailed results above.")
+                sys.exit(1)
+            else:
+                print("\n✓ Profile run complete!")
+        
+        except FileNotFoundError as e:
+            print(f"\n✗ Error: {str(e)}")
+            print(f"\nAvailable profiles: {', '.join(list_profiles())}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"\n✗ Error running profile: {str(e)}")
+            sys.exit(1)
+
+
 def main():
     """
     Main entry point for the CLI.
@@ -290,6 +387,39 @@ def main():
     manifest_parser.add_argument('-d', '--datasets-file', help='JSON file with datasets metadata')
     manifest_parser.add_argument('-f', '--manifest-file', help='Manifest file to validate')
     manifest_parser.set_defaults(func=cmd_manifest)
+    
+    # Profile command
+    profile_parser = subparsers.add_parser('profile', help='Run or manage profiles')
+    profile_parser.add_argument(
+        'action',
+        choices=['list', 'run'],
+        help='Action to perform'
+    )
+    profile_parser.add_argument(
+        'profile',
+        nargs='?',
+        help='Profile name (required for run action)'
+    )
+    profile_parser.add_argument(
+        '-f', '--force',
+        action='store_true',
+        help='Force re-download even if files exist (for run action)'
+    )
+    profile_parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Show detailed results for all datasets (for run action)'
+    )
+    profile_parser.add_argument(
+        '-m', '--manifest',
+        action='store_true',
+        help='Create manifest file after profile run'
+    )
+    profile_parser.add_argument(
+        '-o', '--output',
+        help='Output directory for manifest (default: ./data)'
+    )
+    profile_parser.set_defaults(func=cmd_profile)
     
     # Parse arguments
     args = parser.parse_args()

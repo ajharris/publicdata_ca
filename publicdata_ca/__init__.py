@@ -29,6 +29,15 @@ from publicdata_ca.providers import (
     StatCanProvider,
     CMHCProvider,
 )
+from publicdata_ca.profiles import (
+    Profile,
+    ProfileDataset,
+    ProfileSearch,
+    load_profile,
+    save_profile,
+    list_profiles,
+    run_profile,
+)
 
 __all__ = [
     "Catalog",
@@ -46,4 +55,11 @@ __all__ = [
     "get_registry",
     "StatCanProvider",
     "CMHCProvider",
+    "Profile",
+    "ProfileDataset",
+    "ProfileSearch",
+    "load_profile",
+    "save_profile",
+    "list_profiles",
+    "run_profile",
 ]

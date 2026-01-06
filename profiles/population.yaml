@@ -1,0 +1,16 @@
+# Example profile for population and demographics
+name: population
+description: Population estimates and demographic data
+
+datasets:
+  - provider: statcan
+    id: "17100148"
+    output: data/raw/population_estimates_17100148.csv
+    params:
+      metric: "Population estimates, July 1 (CMA/CA, 2021 boundaries)"
+      frequency: "Annual"
+      geo_scope: "Census metropolitan areas and agglomerations"
+
+output_dir: data/raw
+options:
+  skip_existing: true

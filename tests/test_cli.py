@@ -234,3 +234,245 @@ def test_main_refresh_command():
         
         # Should call refresh_datasets
         assert mock_refresh.called
+
+
+def test_cmd_profile_list(capsys):
+    """Test that cmd_profile lists available profiles."""
+    from publicdata_ca.cli import cmd_profile
+    
+    class Args:
+        action = 'list'
+        profile = None
+        force = False
+        verbose = False
+        manifest = False
+        output = None
+    
+    args = Args()
+    
+    with patch('publicdata_ca.cli.list_profiles') as mock_list:
+        mock_list.return_value = ['economics', 'housing', 'population']
+        
+        cmd_profile(args)
+        
+        captured = capsys.readouterr()
+        assert 'Available profiles' in captured.out
+        assert 'economics' in captured.out
+        assert 'housing' in captured.out
+        assert 'population' in captured.out
+
+
+def test_cmd_profile_list_empty(capsys):
+    """Test that cmd_profile handles empty profile directory."""
+    from publicdata_ca.cli import cmd_profile
+    
+    class Args:
+        action = 'list'
+        profile = None
+        force = False
+        verbose = False
+        manifest = False
+        output = None
+    
+    args = Args()
+    
+    with patch('publicdata_ca.cli.list_profiles') as mock_list:
+        mock_list.return_value = []
+        
+        cmd_profile(args)
+        
+        captured = capsys.readouterr()
+        assert 'No profiles found' in captured.out
+
+
+def test_cmd_profile_run_success(capsys):
+    """Test that cmd_profile run executes a profile successfully."""
+    from publicdata_ca.cli import cmd_profile
+    
+    class Args:
+        action = 'run'
+        profile = 'economics'
+        force = False
+        verbose = False
+        manifest = False
+        output = None
+    
+    args = Args()
+    
+    mock_report = pd.DataFrame([
+        {
+            'dataset': 'test_dataset',
+            'provider': 'statcan',
+            'target_file': '/data/raw/test.csv',
+            'result': 'downloaded',
+            'notes': 'Successfully downloaded',
+            'run_started_utc': '2024-01-01T00:00:00Z'
+        }
+    ])
+    
+    with patch('publicdata_ca.cli.run_profile') as mock_run:
+        mock_run.return_value = mock_report
+        
+        cmd_profile(args)
+        
+        captured = capsys.readouterr()
+        assert 'Running profile: economics' in captured.out
+        assert 'PROFILE RUN SUMMARY' in captured.out
+        assert 'downloaded: 1' in captured.out
+        assert 'Profile run complete!' in captured.out
+
+
+def test_cmd_profile_run_with_errors(capsys):
+    """Test that cmd_profile run handles errors."""
+    from publicdata_ca.cli import cmd_profile
+    
+    class Args:
+        action = 'run'
+        profile = 'economics'
+        force = False
+        verbose = False
+        manifest = False
+        output = None
+    
+    args = Args()
+    
+    mock_report = pd.DataFrame([
+        {
+            'dataset': 'test_dataset',
+            'provider': 'statcan',
+            'target_file': '/data/raw/test.csv',
+            'result': 'error',
+            'notes': 'Download failed',
+            'run_started_utc': '2024-01-01T00:00:00Z'
+        }
+    ])
+    
+    with patch('publicdata_ca.cli.run_profile') as mock_run, \
+         pytest.raises(SystemExit) as exc_info:
+        mock_run.return_value = mock_report
+        
+        cmd_profile(args)
+    
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert 'Some downloads failed' in captured.out
+
+
+def test_cmd_profile_run_missing_profile_name():
+    """Test that cmd_profile run requires a profile name."""
+    from publicdata_ca.cli import cmd_profile
+    
+    class Args:
+        action = 'run'
+        profile = None
+        force = False
+        verbose = False
+        manifest = False
+        output = None
+    
+    args = Args()
+    
+    with pytest.raises(SystemExit) as exc_info:
+        cmd_profile(args)
+    
+    assert exc_info.value.code == 1
+
+
+def test_cmd_profile_run_profile_not_found(capsys):
+    """Test that cmd_profile run handles missing profile."""
+    from publicdata_ca.cli import cmd_profile
+    
+    class Args:
+        action = 'run'
+        profile = 'nonexistent'
+        force = False
+        verbose = False
+        manifest = False
+        output = None
+    
+    args = Args()
+    
+    with patch('publicdata_ca.cli.run_profile') as mock_run, \
+         patch('publicdata_ca.cli.list_profiles') as mock_list, \
+         pytest.raises(SystemExit) as exc_info:
+        
+        mock_run.side_effect = FileNotFoundError("Profile file not found")
+        mock_list.return_value = ['economics', 'housing']
+        
+        cmd_profile(args)
+    
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert 'Profile file not found' in captured.out
+    assert 'Available profiles' in captured.out
+
+
+def test_cmd_profile_run_with_verbose(capsys):
+    """Test that cmd_profile run shows detailed results with verbose flag."""
+    from publicdata_ca.cli import cmd_profile
+    
+    class Args:
+        action = 'run'
+        profile = 'economics'
+        force = False
+        verbose = True
+        manifest = False
+        output = None
+    
+    args = Args()
+    
+    mock_report = pd.DataFrame([
+        {
+            'dataset': 'test_dataset',
+            'provider': 'statcan',
+            'target_file': '/data/raw/test.csv',
+            'result': 'downloaded',
+            'notes': 'Successfully downloaded',
+            'run_started_utc': '2024-01-01T00:00:00Z'
+        }
+    ])
+    
+    with patch('publicdata_ca.cli.run_profile') as mock_run:
+        mock_run.return_value = mock_report
+        
+        cmd_profile(args)
+        
+        captured = capsys.readouterr()
+        assert 'DETAILED RESULTS' in captured.out
+        assert 'test_dataset' in captured.out
+
+
+def test_main_profile_list_command():
+    """Test that the main function dispatches to cmd_profile for list action."""
+    with patch('sys.argv', ['publicdata', 'profile', 'list']), \
+         patch('publicdata_ca.cli.list_profiles') as mock_list:
+        
+        mock_list.return_value = ['economics']
+        
+        main()
+        
+        # Should call list_profiles
+        assert mock_list.called
+
+
+def test_main_profile_run_command():
+    """Test that the main function dispatches to cmd_profile for run action."""
+    with patch('sys.argv', ['publicdata', 'profile', 'run', 'economics']), \
+         patch('publicdata_ca.cli.run_profile') as mock_run:
+        
+        mock_run.return_value = pd.DataFrame([
+            {
+                'dataset': 'test',
+                'provider': 'statcan',
+                'target_file': '/data/test.csv',
+                'result': 'downloaded',
+                'notes': '',
+                'run_started_utc': '2024-01-01T00:00:00Z'
+            }
+        ])
+        
+        main()
+        
+        # Should call run_profile
+        assert mock_run.called
+
