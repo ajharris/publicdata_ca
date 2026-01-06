@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import pandas as pd
 from publicdata_ca.http import retry_request, download_file
 from publicdata_ca.provider import Provider, DatasetRef
 
@@ -199,8 +200,6 @@ def download_valet_series(
     data = fetch_valet_series(series_name, start_date, end_date)
     
     # Convert to tidy format and save as CSV
-    import pandas as pd
-    
     observations = data['observations']
     if not observations:
         raise RuntimeError(f"No observations returned for series {series_name}")
@@ -298,9 +297,11 @@ def _write_valet_metadata(
             content_type='application/json',
             additional_metadata=additional_metadata
         )
-    except Exception:
+    except Exception as e:
         # Don't fail the download if metadata writing fails
-        pass
+        # This is consistent with other providers (e.g., statcan.py line 317)
+        import logging
+        logging.debug(f"Failed to write provenance metadata for {file_path}: {e}")
 
 
 class ValetProvider(Provider):

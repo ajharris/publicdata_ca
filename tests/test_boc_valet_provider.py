@@ -2,6 +2,7 @@
 
 import json
 import pytest
+import pandas as pd
 from unittest.mock import Mock, patch, MagicMock
 from pathlib import Path
 from publicdata_ca.provider import Provider, DatasetRef
@@ -189,7 +190,6 @@ class TestDownloadValetSeries:
         assert output_file.exists()
         
         # Verify CSV content
-        import pandas as pd
         df = pd.read_csv(output_file)
         assert len(df) == 3
         assert 'date' in df.columns
