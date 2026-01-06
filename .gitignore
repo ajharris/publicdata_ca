@@ -54,6 +54,9 @@ cover/
 # URL cache
 publicdata_ca/.cache/
 
+# HTTP cache metadata
+*.http_cache.json
+
 # Translations
 *.mo
 *.pot
