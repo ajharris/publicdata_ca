@@ -36,12 +36,13 @@ class Catalog:
         """
         self._datasets[dataset_id] = metadata
     
-    def list_datasets(self, provider: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_datasets(self, provider: Optional[str] = None, tags: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
-        List all datasets in the catalog, optionally filtered by provider.
+        List all datasets in the catalog, optionally filtered by provider and/or tags.
         
         Args:
             provider: Optional provider name to filter datasets (e.g., 'statcan', 'cmhc').
+            tags: Optional list of tags to filter datasets. Datasets must have ALL specified tags.
         
         Returns:
             List of dataset metadata dictionaries.
@@ -49,6 +50,11 @@ class Catalog:
         datasets = list(self._datasets.values())
         if provider:
             datasets = [d for d in datasets if d.get('provider') == provider]
+        if tags:
+            datasets = [
+                d for d in datasets
+                if d.get('tags') and all(tag in d.get('tags', []) for tag in tags)
+            ]
         return datasets
     
     def get_dataset(self, dataset_id: str) -> Optional[Dict[str, Any]]:
@@ -63,12 +69,13 @@ class Catalog:
         """
         return self._datasets.get(dataset_id)
     
-    def search(self, query: str) -> List[Dict[str, Any]]:
+    def search(self, query: str, tags: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
-        Search for datasets by keyword in title or description.
+        Search for datasets by keyword in title or description, optionally filtered by tags.
         
         Args:
             query: Search query string.
+            tags: Optional list of tags to filter results. Datasets must have ALL specified tags.
         
         Returns:
             List of matching dataset metadata dictionaries.
@@ -79,5 +86,10 @@ class Catalog:
             title = dataset.get('title', '').lower()
             description = dataset.get('description', '').lower()
             if query_lower in title or query_lower in description:
-                results.append(dataset)
+                # Apply tag filter if specified
+                if tags:
+                    if dataset.get('tags') and all(tag in dataset.get('tags', []) for tag in tags):
+                        results.append(dataset)
+                else:
+                    results.append(dataset)
         return results
