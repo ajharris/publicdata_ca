@@ -137,13 +137,15 @@ CMHC landing pages can change frequently, causing download failures. Here's how 
 **Solutions:**
 1. **The cache auto-validates** - If the cached URL returns HTML, it's automatically refreshed
 2. **Force refresh by clearing cache**:
-   ```bash
-   python -c "from publicdata_ca.url_cache import clear_cache; clear_cache()"
-   ```
-3. **Disable caching during development**:
    ```python
-   report = refresh_datasets()  # Uses cache by default
-   # To force fresh resolution, modify datasets.py or use direct API
+   from publicdata_ca.url_cache import clear_cache
+   clear_cache()  # Clear all CMHC caches
+   ```
+3. **Disable caching when calling the resolver directly**:
+   ```python
+   from publicdata_ca.resolvers.cmhc_landing import resolve_cmhc_landing_page
+   # Force fresh resolution by disabling cache
+   assets = resolve_cmhc_landing_page(url, use_cache=False)
    ```
 
 #### **Problem: "Manual download required" in refresh report**
@@ -215,6 +217,11 @@ class Dataset:
     status_note: str          # Notes about the dataset
     page_url: str | None      # CMHC landing page URL
     direct_url: str | None    # Direct download URL (if available)
+    
+    # Computed properties:
+    def destination() -> Path | None      # Resolves target_file to absolute path in data/raw
+    @property
+    def table_number() -> str | None      # Formats pid as "XX-XX-XXXX" for StatsCan tables
 ```
 
 **Default catalog:** The package ships with a curated catalog (`DEFAULT_DATASETS`) containing essential Canadian datasets like CPI, population estimates, unemployment rates, and CMHC housing data.
