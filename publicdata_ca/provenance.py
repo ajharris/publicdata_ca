@@ -28,6 +28,26 @@ from typing import Optional, Dict, Any
 # Current metadata schema version
 METADATA_SCHEMA_VERSION = "1.0"
 
+# Standard metadata fields (excluding provider-specific fields)
+STANDARD_METADATA_FIELDS = {
+    "schema_version", "file", "source_url", "downloaded_at",
+    "file_size_bytes", "hash", "content_type", "provider"
+}
+
+
+def _format_utc_timestamp(dt: datetime) -> str:
+    """
+    Format a datetime as ISO 8601 with 'Z' suffix for UTC.
+    
+    Args:
+        dt: Datetime object in UTC timezone.
+    
+    Returns:
+        ISO 8601 formatted string with 'Z' suffix (e.g., '2024-01-01T12:00:00Z').
+    """
+    # Use strftime for explicit formatting to avoid timezone offset variations
+    return dt.strftime('%Y-%m-%dT%H:%M:%S') + 'Z'
+
 
 def calculate_file_hash(file_path: str, algorithm: str = 'sha256') -> str:
     """
@@ -124,7 +144,7 @@ def write_provenance_metadata(
         "schema_version": METADATA_SCHEMA_VERSION,
         "file": str(file_path_obj.name),
         "source_url": source_url,
-        "downloaded_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "downloaded_at": _format_utc_timestamp(datetime.now(timezone.utc)),
         "file_size_bytes": file_size,
         "hash": {
             "algorithm": hash_algorithm,
@@ -155,11 +175,8 @@ def write_provenance_metadata(
     # Merge fields that aren't part of the standard schema into provider.specific
     if additional_metadata:
         # Extract non-standard fields
-        standard_fields = {"schema_version", "file", "source_url", "downloaded_at", 
-                          "file_size_bytes", "hash", "content_type", "provider"}
-        
         for key, value in additional_metadata.items():
-            if key not in standard_fields and key != "provider":
+            if key not in STANDARD_METADATA_FIELDS and key != "provider":
                 # Add to provider.specific section
                 if "provider" not in metadata:
                     metadata["provider"] = {}

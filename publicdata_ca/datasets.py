@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, Union
 
 import pandas as pd
 
@@ -355,7 +355,7 @@ def refresh_datasets(
 
 def export_run_report(
     report: pd.DataFrame,
-    output_path: str | Path,
+    output_path: Union[str, Path],
     format: str = 'csv'
 ) -> str:
     """
