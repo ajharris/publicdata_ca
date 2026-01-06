@@ -132,6 +132,7 @@ def download_file(
     
     Raises:
         URLError: If download fails after all retries.
+        HTTPError: If the server returns an HTTP error code (except 304 with caching enabled).
         ValueError: If validate_content_type=True and HTML content is detected.
     
     Example:
