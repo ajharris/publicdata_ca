@@ -96,7 +96,8 @@ def download_file(
     max_retries: int = 3,
     headers: Optional[Dict[str, str]] = None,
     chunk_size: int = 8192,
-    validate_content_type: bool = False
+    validate_content_type: bool = False,
+    write_metadata: bool = True
 ) -> str:
     """
     Download a file from a URL to a local path with retry logic and streaming support.
@@ -113,6 +114,7 @@ def download_file(
             Larger chunks can be faster but use more memory.
         validate_content_type: If True, validates that response is not HTML (default: False).
             Raises ValueError if HTML content is detected.
+        write_metadata: If True, writes provenance metadata to a .meta.json sidecar file (default: True).
     
     Returns:
         Path to the downloaded file.
@@ -132,11 +134,14 @@ def download_file(
     """
     response = retry_request(url, max_retries=max_retries, headers=headers)
     
+    # Get content type from response headers
+    content_type = response.headers.get('Content-Type', '')
+    
     # Validate content type if requested
     if validate_content_type:
-        content_type = response.headers.get('Content-Type', '').lower()
+        content_type_lower = content_type.lower()
         # Check for HTML or XHTML content (using 'in' to match variants like 'application/xhtml+xml')
-        if 'text/html' in content_type or 'application/xhtml' in content_type:
+        if 'text/html' in content_type_lower or 'application/xhtml' in content_type_lower:
             raise ValueError(
                 f"Expected data file but received HTML content (Content-Type: {content_type}). "
                 f"URL may be invalid or may have changed. Please verify the URL points to a data file."
@@ -148,5 +153,19 @@ def download_file(
             if not chunk:
                 break
             f.write(chunk)
+    
+    # Write provenance metadata if requested
+    if write_metadata:
+        from publicdata_ca.provenance import write_provenance_metadata
+        try:
+            write_provenance_metadata(
+                output_path,
+                url,
+                content_type=content_type if content_type else None
+            )
+        except Exception:
+            # Don't fail the download if metadata writing fails
+            # This is a best-effort operation
+            pass
     
     return output_path

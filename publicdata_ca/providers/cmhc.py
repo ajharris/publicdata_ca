@@ -129,6 +129,9 @@ def download_cmhc_asset(
             )
             downloaded_files.append(str(output_file.relative_to(output_path.parent)))
             asset['local_path'] = str(output_file)
+            
+            # Add CMHC-specific metadata to the provenance file
+            _add_cmhc_metadata(str(output_file), asset, landing_url)
         except (ValueError, Exception) as e:
             # Handle all download errors uniformly (ValueError for validation, Exception for others)
             # Both are tracked the same way, but logged differently based on type
@@ -156,3 +159,46 @@ def download_cmhc_asset(
     }
     
     return result
+
+
+def _add_cmhc_metadata(file_path: str, asset: Dict[str, Any], landing_url: str) -> None:
+    """
+    Add CMHC-specific metadata to an existing provenance file.
+    
+    Enhances the automatically-generated .meta.json file with CMHC-specific
+    information like asset title, format, rank, and landing page URL.
+    
+    Args:
+        file_path: Path to the downloaded file.
+        asset: Asset metadata dictionary.
+        landing_url: Original CMHC landing page URL.
+    """
+    import json
+    from pathlib import Path
+    
+    meta_file_path = Path(file_path).parent / f"{Path(file_path).name}.meta.json"
+    
+    if not meta_file_path.exists():
+        return
+    
+    try:
+        # Read existing metadata
+        with open(meta_file_path, 'r', encoding='utf-8') as f:
+            metadata = json.load(f)
+        
+        # Add CMHC-specific fields
+        metadata['provider'] = 'cmhc'
+        metadata['landing_page_url'] = landing_url
+        metadata['asset_title'] = asset.get('title', '')
+        metadata['asset_format'] = asset.get('format', '')
+        
+        # Add rank if available
+        if 'rank' in asset:
+            metadata['asset_rank'] = asset['rank']
+        
+        # Write updated metadata
+        with open(meta_file_path, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+    except Exception:
+        # Don't fail if metadata enhancement fails
+        pass

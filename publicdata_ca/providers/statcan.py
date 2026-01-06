@@ -84,13 +84,21 @@ def download_statcan_table(
     try:
         # Download ZIP file to temporary location
         zip_path = output_path / f"{pid}_temp.zip"
-        download_file(download_url, str(zip_path), max_retries=max_retries)
+        download_file(download_url, str(zip_path), max_retries=max_retries, write_metadata=False)
         
         # Extract ZIP file
         extracted_files = _extract_zip(zip_path, output_path, pid)
         
         # Parse manifest if available
         manifest_data = _parse_manifest(output_path, pid)
+        
+        # Write provenance metadata for extracted files
+        _write_statcan_metadata(
+            extracted_files,
+            download_url,
+            pid,
+            manifest_data
+        )
         
         # Clean up ZIP file
         if zip_path.exists():
@@ -259,3 +267,65 @@ def _parse_manifest(output_dir: Path, pid: str) -> Optional[Dict[str, Any]]:
         }
     
     return None
+
+
+def _write_statcan_metadata(
+    extracted_files: List[str],
+    source_url: str,
+    pid: str,
+    manifest_data: Optional[Dict[str, Any]]
+) -> None:
+    """
+    Write provenance metadata for StatsCan extracted files.
+    
+    Creates .meta.json sidecar files for each extracted file with:
+    - Source URL (ZIP download URL)
+    - StatsCan-specific metadata (PID, table title)
+    - Standard provenance info (timestamp, hash, size)
+    
+    Args:
+        extracted_files: List of extracted file paths.
+        source_url: Original ZIP download URL.
+        pid: StatsCan Product ID.
+        manifest_data: Parsed manifest data (if available).
+    """
+    from publicdata_ca.provenance import write_provenance_metadata
+    
+    # Build additional metadata common to all files
+    additional_metadata = {
+        'provider': 'statcan',
+        'pid': pid,
+        'table_number': _format_table_number(pid)
+    }
+    
+    # Add title if available from manifest
+    if manifest_data and 'title' in manifest_data:
+        additional_metadata['title'] = manifest_data['title']
+    
+    # Write metadata for each extracted file
+    for file_path in extracted_files:
+        try:
+            write_provenance_metadata(
+                file_path,
+                source_url,
+                content_type='application/zip',  # Original download was ZIP
+                additional_metadata=additional_metadata
+            )
+        except Exception:
+            # Don't fail the download if metadata writing fails
+            pass
+
+
+def _format_table_number(pid: str) -> str:
+    """
+    Format PID as table number with hyphens.
+    
+    Args:
+        pid: 8-digit Product ID (e.g., '18100004').
+    
+    Returns:
+        Formatted table number (e.g., '18-10-0004').
+    """
+    if len(pid) == 8:
+        return f"{pid[:2]}-{pid[2:4]}-{pid[4:]}"
+    return pid
