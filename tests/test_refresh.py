@@ -143,29 +143,27 @@ def test_refresh_datasets_force_download_statcan(mock_datasets, tmp_path):
 
 def test_refresh_datasets_handles_cmhc_direct_url(mock_datasets):
     """Test that refresh_datasets handles CMHC datasets with direct URLs."""
-    with patch("publicdata_ca.providers.cmhc.download_cmhc_asset") as mock_download:
-        mock_download.return_value = {"files": ["test.xlsx"], "errors": []}
+    with patch("publicdata_ca.http.download_file") as mock_download:
+        mock_download.return_value = str(mock_datasets[1].target_file)
         
         result = refresh_datasets(datasets=[mock_datasets[1]])
         
         mock_download.assert_called_once()
         assert result.iloc[0]["result"] == "downloaded"
+        assert "direct URL" in result.iloc[0]["notes"]
 
 
 def test_refresh_datasets_resolves_cmhc_landing_page(mock_datasets):
     """Test that refresh_datasets resolves CMHC landing pages."""
-    with patch("publicdata_ca.providers.cmhc.download_cmhc_asset") as mock_download, \
-         patch("publicdata_ca.resolvers.cmhc_landing.resolve_cmhc_landing_page") as mock_resolve:
-        
-        mock_resolve.return_value = [{"url": "https://example.com/resolved.xlsx"}]
+    with patch("publicdata_ca.providers.cmhc.download_cmhc_asset") as mock_download:
         mock_download.return_value = {"files": ["test.xlsx"], "errors": []}
         
         result = refresh_datasets(datasets=[mock_datasets[2]])
         
-        mock_resolve.assert_called_once_with("https://example.com/landing")
+        # Should call download_cmhc_asset with the landing page URL
         mock_download.assert_called_once()
         assert result.iloc[0]["result"] == "downloaded"
-        assert "Resolved direct URL" in result.iloc[0]["notes"]
+        assert "landing page" in result.iloc[0]["notes"]
 
 
 def test_refresh_datasets_handles_missing_target(mock_datasets):
@@ -189,7 +187,7 @@ def test_refresh_datasets_handles_statcan_errors(mock_datasets):
 
 def test_refresh_datasets_handles_cmhc_errors(mock_datasets):
     """Test that refresh_datasets handles CMHC download errors gracefully."""
-    with patch("publicdata_ca.providers.cmhc.download_cmhc_asset") as mock_download:
+    with patch("publicdata_ca.http.download_file") as mock_download:
         mock_download.side_effect = RuntimeError("Download failed")
         
         result = refresh_datasets(datasets=[mock_datasets[1]])
@@ -203,7 +201,7 @@ def test_refresh_datasets_handles_cmhc_no_files(mock_datasets):
     with patch("publicdata_ca.providers.cmhc.download_cmhc_asset") as mock_download:
         mock_download.return_value = {"files": [], "errors": []}
         
-        result = refresh_datasets(datasets=[mock_datasets[1]])
+        result = refresh_datasets(datasets=[mock_datasets[2]])
         
         assert result.iloc[0]["result"] == "error"
         assert "No files downloaded" in result.iloc[0]["notes"]
@@ -217,44 +215,60 @@ def test_refresh_datasets_handles_cmhc_with_errors(mock_datasets):
             "errors": ["Error 1: Failed to download", "Error 2: Invalid URL"]
         }
         
-        result = refresh_datasets(datasets=[mock_datasets[1]])
+        result = refresh_datasets(datasets=[mock_datasets[2]])
         
         assert result.iloc[0]["result"] == "error"
         # Should include first 2 errors
         assert "Error 1" in result.iloc[0]["notes"]
 
 
-def test_refresh_datasets_handles_resolution_failure(mock_datasets):
-    """Test that refresh_datasets handles CMHC resolution failures."""
-    with patch("publicdata_ca.resolvers.cmhc_landing.resolve_cmhc_landing_page") as mock_resolve:
-        mock_resolve.return_value = []
-        
-        result = refresh_datasets(datasets=[mock_datasets[2]])
-        
-        assert result.iloc[0]["result"] == "manual_required"
-        assert "No direct_url available" in result.iloc[0]["notes"]
+def test_refresh_datasets_handles_resolution_failure(mock_datasets, monkeypatch):
+    """Test that refresh_datasets handles CMHC datasets with no URLs."""
+    from publicdata_ca import datasets as ds_module
+    
+    # Create a CMHC dataset with no URLs
+    raw_dir = mock_datasets[0].target_file.parent
+    no_url_dataset = Dataset(
+        dataset="test_cmhc_no_url",
+        provider="cmhc",
+        metric="Test CMHC metric",
+        pid=None,
+        frequency="Annual",
+        geo_scope="Canada",
+        delivery="download_cmhc_asset",
+        target_file=raw_dir / "test_cmhc_no_url.xlsx",
+        automation_status="manual",
+        status_note="No URL configured",
+        page_url=None,
+        direct_url=None,
+    )
+    
+    result = refresh_datasets(datasets=[no_url_dataset])
+    
+    assert result.iloc[0]["result"] == "manual_required"
+    assert "No direct_url or page_url available" in result.iloc[0]["notes"]
 
 
 def test_refresh_datasets_handles_resolution_exception(mock_datasets):
-    """Test that refresh_datasets handles CMHC resolution exceptions."""
-    with patch("publicdata_ca.resolvers.cmhc_landing.resolve_cmhc_landing_page") as mock_resolve:
-        mock_resolve.side_effect = Exception("Failed to fetch page")
+    """Test that refresh_datasets handles CMHC download exceptions from landing pages."""
+    with patch("publicdata_ca.providers.cmhc.download_cmhc_asset") as mock_download:
+        mock_download.side_effect = Exception("Failed to fetch page")
         
         result = refresh_datasets(datasets=[mock_datasets[2]])
         
-        assert result.iloc[0]["result"] == "manual_required"
-        assert "Failed to resolve landing page" in result.iloc[0]["notes"]
+        assert result.iloc[0]["result"] == "error"
+        assert "Failed to fetch page" in result.iloc[0]["notes"]
 
 
 def test_refresh_datasets_uses_default_datasets():
     """Test that refresh_datasets uses DEFAULT_DATASETS when no datasets provided."""
     with patch("publicdata_ca.providers.statcan.download_statcan_table") as mock_statcan, \
          patch("publicdata_ca.providers.cmhc.download_cmhc_asset") as mock_cmhc, \
-         patch("publicdata_ca.resolvers.cmhc_landing.resolve_cmhc_landing_page") as mock_resolve:
+         patch("publicdata_ca.http.download_file") as mock_download_file:
         
         mock_statcan.return_value = {"files": ["test.csv"], "skipped": True}
         mock_cmhc.return_value = {"files": ["test.xlsx"], "errors": []}
-        mock_resolve.return_value = [{"url": "https://example.com/data.xlsx"}]
+        mock_download_file.return_value = "/path/to/file.xlsx"
         
         result = refresh_datasets()
         

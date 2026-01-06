@@ -267,62 +267,51 @@ def refresh_datasets(
         
         # Process StatsCan datasets
         if ds.provider == "statcan" and ds.pid:
+            try:
+                # Download the table (download_statcan_table handles skip_existing internally)
+                result = download_statcan_table(
+                    ds.pid,
+                    str(dest.parent),
+                    skip_existing=should_skip_existing
+                )
+                if result.get("skipped"):
+                    record["result"] = "exists"
+                    record["notes"] = "File already present"
+                else:
+                    record["result"] = "downloaded"
+                    record["notes"] = f"Downloaded {len(result.get('files', []))} file(s)"
+            except Exception as exc:
+                record["result"] = "error"
+                record["notes"] = f"Download failed: {str(exc)}"
+        
+        # Process CMHC datasets
+        elif ds.provider == "cmhc":
             if dest.exists() and should_skip_existing:
                 record["result"] = "exists"
                 record["notes"] = "File already present"
             else:
-                try:
-                    # Download the table
-                    result = download_statcan_table(
-                        ds.pid,
-                        str(dest.parent),
-                        skip_existing=should_skip_existing
-                    )
-                    if result.get("skipped"):
-                        record["result"] = "exists"
-                        record["notes"] = "File already present"
-                    else:
-                        record["result"] = "downloaded"
-                        record["notes"] = f"Downloaded {len(result.get('files', []))} file(s)"
-                except Exception as exc:
-                    record["result"] = "error"
-                    record["notes"] = f"Download failed: {str(exc)}"
-        
-        # Process CMHC datasets
-        elif ds.provider == "cmhc":
-            resolved_url = ds.direct_url
-            scrape_note = ""
-            
-            # Try to resolve URL from page_url if direct_url not available
-            if not resolved_url and ds.page_url:
-                try:
-                    assets = resolve_cmhc_landing_page(ds.page_url)
-                    if assets:
-                        # Take the first (highest-ranked) asset
-                        resolved_url = assets[0].get("url")
-                        scrape_note = "Resolved direct URL from landing page"
-                except Exception as exc:
-                    scrape_note = f"Failed to resolve landing page: {str(exc)}"
-            
-            if not resolved_url:
-                record["result"] = "manual_required"
-                record["notes"] = "No direct_url available — download from landing page manually"
-                if scrape_note:
-                    record["notes"] += f"; {scrape_note}"
-            else:
-                if dest.exists() and should_skip_existing:
-                    record["result"] = "exists"
-                    record["notes"] = "File already present"
-                    if scrape_note:
-                        record["notes"] += f"; {scrape_note}"
-                else:
-                    note_parts = [scrape_note] if scrape_note else []
+                # If we have a direct_url, download directly
+                # Otherwise, use the landing page resolver
+                if ds.direct_url:
+                    # Have a direct URL - download it directly
+                    from publicdata_ca.http import download_file
                     try:
-                        # Download using the landing page URL if we have it
-                        # Otherwise use direct URL
-                        download_url = ds.page_url if ds.page_url else resolved_url
+                        download_file(
+                            ds.direct_url,
+                            str(dest),
+                            max_retries=3,
+                            validate_content_type=True
+                        )
+                        record["result"] = "downloaded"
+                        record["notes"] = "Downloaded from direct URL"
+                    except Exception as exc:
+                        record["result"] = "error"
+                        record["notes"] = f"Download error: {str(exc)}"
+                elif ds.page_url:
+                    # Have a landing page URL - resolve and download
+                    try:
                         result = download_cmhc_asset(
-                            download_url,
+                            ds.page_url,
                             str(dest.parent),
                             max_retries=3
                         )
@@ -330,18 +319,22 @@ def refresh_datasets(
                         # Check if download was successful
                         if result.get("files"):
                             record["result"] = "downloaded"
-                            note_parts.append(f"Downloaded {len(result['files'])} file(s)")
+                            record["notes"] = f"Downloaded {len(result['files'])} file(s) from landing page"
                         elif result.get("errors"):
                             record["result"] = "error"
-                            note_parts.extend(result["errors"][:2])  # Include first 2 errors
+                            # Include first 2 errors
+                            error_msgs = result["errors"][:2]
+                            record["notes"] = "; ".join(error_msgs)
                         else:
                             record["result"] = "error"
-                            note_parts.append("No files downloaded")
+                            record["notes"] = "No files downloaded from landing page"
                     except Exception as exc:
                         record["result"] = "error"
-                        note_parts.append(f"Download error: {str(exc)}")
-                    finally:
-                        record["notes"] = "; ".join(part for part in note_parts if part)
+                        record["notes"] = f"Download error: {str(exc)}"
+                else:
+                    # No URL available
+                    record["result"] = "manual_required"
+                    record["notes"] = "No direct_url or page_url available — manual download required"
         
         else:
             record["result"] = "unknown_provider"
