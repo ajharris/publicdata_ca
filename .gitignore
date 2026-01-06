@@ -51,6 +51,9 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# URL cache
+publicdata_ca/.cache/
+
 # Translations
 *.mo
 *.pot

@@ -14,6 +14,14 @@ from publicdata_ca.providers.cmhc import (
 )
 
 
+@pytest.fixture(autouse=True)
+def disable_cache():
+    """Disable URL caching for all provider tests to avoid interference."""
+    with patch('publicdata_ca.resolvers.cmhc_landing.load_cached_urls', return_value=None), \
+         patch('publicdata_ca.resolvers.cmhc_landing.save_cached_urls'):
+        yield
+
+
 def test_download_cmhc_asset_validates_content_type():
     """Test that download_cmhc_asset rejects HTML downloads."""
     with tempfile.TemporaryDirectory() as tmpdir:

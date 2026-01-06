@@ -187,7 +187,7 @@ def test_resolve_cmhc_landing_page_extracts_csv_links():
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response), \
          patch('publicdata_ca.resolvers.cmhc_landing._check_content_type', return_value=(True, 'text/csv')):
         
-        assets = resolve_cmhc_landing_page('https://example.com/landing', validate=True)
+        assets = resolve_cmhc_landing_page('https://example.com/landing', validate=True, use_cache=False)
         
         assert len(assets) == 2
         assert all(a['format'] == 'csv' for a in assets)
@@ -211,7 +211,7 @@ def test_resolve_cmhc_landing_page_extracts_xlsx_links():
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response), \
          patch('publicdata_ca.resolvers.cmhc_landing._check_content_type', return_value=(True, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')):
         
-        assets = resolve_cmhc_landing_page('https://example.com/landing', validate=True)
+        assets = resolve_cmhc_landing_page('https://example.com/landing', validate=True, use_cache=False)
         
         assert len(assets) == 1
         assert assets[0]['format'] == 'xlsx'
@@ -234,7 +234,7 @@ def test_resolve_cmhc_landing_page_ranks_candidates():
     mock_response.read.return_value = html_content.encode('utf-8')
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
-        assets = resolve_cmhc_landing_page('https://example.com/landing', validate=False)
+        assets = resolve_cmhc_landing_page('https://example.com/landing', validate=False, use_cache=False)
         
         # Should have all three files
         assert len(assets) == 3
@@ -269,7 +269,7 @@ def test_resolve_cmhc_landing_page_validates_and_rejects_html():
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response), \
          patch('publicdata_ca.resolvers.cmhc_landing._check_content_type', side_effect=mock_check):
         
-        assets = resolve_cmhc_landing_page('https://example.com/landing', validate=True)
+        assets = resolve_cmhc_landing_page('https://example.com/landing', validate=True, use_cache=False)
         
         assert len(assets) == 2
         
@@ -299,7 +299,7 @@ def test_resolve_cmhc_landing_page_without_validation():
     mock_response.read.return_value = html_content.encode('utf-8')
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
-        assets = resolve_cmhc_landing_page('https://example.com/landing', validate=False)
+        assets = resolve_cmhc_landing_page('https://example.com/landing', validate=False, use_cache=False)
         
         assert len(assets) == 1
         assert not assets[0]['validated']
@@ -322,7 +322,7 @@ def test_resolve_cmhc_landing_page_resolves_absolute_urls():
     mock_response.read.return_value = html_content.encode('utf-8')
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
-        assets = resolve_cmhc_landing_page('https://example.com/page', validate=False)
+        assets = resolve_cmhc_landing_page('https://example.com/page', validate=False, use_cache=False)
         
         assert len(assets) == 3
         
@@ -352,7 +352,7 @@ def test_resolve_cmhc_landing_page_avoids_duplicates():
     mock_response.read.return_value = html_content.encode('utf-8')
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
-        assets = resolve_cmhc_landing_page('https://example.com/page', validate=False)
+        assets = resolve_cmhc_landing_page('https://example.com/page', validate=False, use_cache=False)
         
         # Should deduplicate - first two are same URL, third is different
         assert len(assets) == 2
@@ -378,7 +378,7 @@ def test_resolve_cmhc_landing_page_extracts_data_attributes():
     mock_response.read.return_value = html_content.encode('utf-8')
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
-        assets = resolve_cmhc_landing_page('https://example.com/page', validate=False)
+        assets = resolve_cmhc_landing_page('https://example.com/page', validate=False, use_cache=False)
         
         assert len(assets) == 3
         formats = {a['format'] for a in assets}
@@ -415,7 +415,8 @@ def test_resolve_cmhc_landing_page_limits_validation_attempts():
         assets = resolve_cmhc_landing_page(
             'https://example.com/page',
             validate=True,
-            max_validation_attempts=3
+            max_validation_attempts=3,
+            use_cache=False
         )
         
         # Should validate only top 3 candidates
@@ -479,3 +480,90 @@ def test_check_content_type_case_insensitive():
         
         assert not is_valid
         assert 'text/html' in content_type.lower()
+
+
+def test_resolve_cmhc_landing_page_uses_cache():
+    """Test that resolve_cmhc_landing_page uses cached URLs when available."""
+    landing_url = 'https://example.com/landing'
+    cached_assets = [
+        {'url': 'https://example.com/cached.csv', 'title': 'Cached File', 'format': 'csv', 'rank': 200, 'validated': True}
+    ]
+    
+    with patch('publicdata_ca.resolvers.cmhc_landing.load_cached_urls', return_value=cached_assets), \
+         patch('publicdata_ca.resolvers.cmhc_landing._check_content_type', return_value=(True, 'text/csv')), \
+         patch('publicdata_ca.resolvers.cmhc_landing.retry_request') as mock_request:
+        
+        assets = resolve_cmhc_landing_page(landing_url, validate=True, use_cache=True)
+        
+        # Should return cached assets
+        assert len(assets) == 1
+        assert assets[0]['url'] == 'https://example.com/cached.csv'
+        
+        # Should not make HTTP request to landing page
+        mock_request.assert_not_called()
+
+
+def test_resolve_cmhc_landing_page_bypasses_cache_when_disabled():
+    """Test that resolve_cmhc_landing_page bypasses cache when use_cache=False."""
+    landing_url = 'https://example.com/landing'
+    html_content = '<html><body><a href="fresh.csv">Fresh File</a></body></html>'
+    
+    mock_response = Mock()
+    mock_response.read.return_value = html_content.encode('utf-8')
+    
+    with patch('publicdata_ca.resolvers.cmhc_landing.load_cached_urls') as mock_load, \
+         patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
+        
+        assets = resolve_cmhc_landing_page(landing_url, validate=False, use_cache=False)
+        
+        # Should not load from cache
+        mock_load.assert_not_called()
+        
+        # Should resolve from landing page
+        assert len(assets) == 1
+        assert assets[0]['title'] == 'Fresh File'
+
+
+def test_resolve_cmhc_landing_page_saves_to_cache():
+    """Test that resolve_cmhc_landing_page saves resolved URLs to cache."""
+    landing_url = 'https://example.com/landing'
+    html_content = '<html><body><a href="data.csv">Data File</a></body></html>'
+    
+    mock_response = Mock()
+    mock_response.read.return_value = html_content.encode('utf-8')
+    
+    with patch('publicdata_ca.resolvers.cmhc_landing.load_cached_urls', return_value=None), \
+         patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response), \
+         patch('publicdata_ca.resolvers.cmhc_landing.save_cached_urls') as mock_save:
+        
+        assets = resolve_cmhc_landing_page(landing_url, validate=False, use_cache=True)
+        
+        # Should save to cache
+        mock_save.assert_called_once()
+        call_args = mock_save.call_args
+        assert call_args[0][0] == landing_url
+        assert len(call_args[0][1]) == 1
+        assert call_args[0][1][0]['title'] == 'Data File'
+
+
+def test_resolve_cmhc_landing_page_revalidates_stale_cache():
+    """Test that cached URLs are revalidated when validation is enabled."""
+    landing_url = 'https://example.com/landing'
+    cached_assets = [
+        {'url': 'https://example.com/stale.csv', 'title': 'Stale File', 'format': 'csv', 'rank': 200}
+    ]
+    html_content = '<html><body><a href="fresh.csv">Fresh File</a></body></html>'
+    
+    mock_landing_response = Mock()
+    mock_landing_response.read.return_value = html_content.encode('utf-8')
+    
+    with patch('publicdata_ca.resolvers.cmhc_landing.load_cached_urls', return_value=cached_assets), \
+         patch('publicdata_ca.resolvers.cmhc_landing._check_content_type', return_value=(False, 'text/html')), \
+         patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_landing_response):
+        
+        # Cached URL fails validation, should fall back to resolving
+        assets = resolve_cmhc_landing_page(landing_url, validate=True, use_cache=True)
+        
+        # Should have re-resolved from landing page
+        assert len(assets) == 1
+        assert assets[0]['title'] == 'Fresh File'
