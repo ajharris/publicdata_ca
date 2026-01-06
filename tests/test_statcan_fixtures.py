@@ -49,7 +49,7 @@ def test_extract_zip_with_fixture():
         assert metadata_file.exists(), "Metadata CSV should be extracted"
         
         # Verify data file content
-        with open(data_file, 'r') as f:
+        with open(data_file, 'r', encoding='utf-8') as f:
             content = f.read()
             assert 'REF_DATE' in content, "Should have REF_DATE column"
             assert 'GEO' in content, "Should have GEO column"
@@ -58,7 +58,7 @@ def test_extract_zip_with_fixture():
             assert '2020' in content, "Should have year data"
         
         # Verify metadata file content
-        with open(metadata_file, 'r') as f:
+        with open(metadata_file, 'r', encoding='utf-8') as f:
             content = f.read()
             assert 'Cube Title' in content, "Should have metadata headers"
             assert 'Product Id' in content, "Should have Product Id field"
@@ -145,7 +145,7 @@ def test_download_statcan_table_data_integrity():
         
         # Read and verify the extracted data
         data_file = output_dir / '18100004.csv'
-        with open(data_file, 'r') as f:
+        with open(data_file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         
         # Verify header row
@@ -184,7 +184,7 @@ def test_download_statcan_table_metadata_content():
         
         # Read and verify the metadata
         metadata_file = output_dir / '18100004_MetaData.csv'
-        with open(metadata_file, 'r') as f:
+        with open(metadata_file, 'r', encoding='utf-8') as f:
             content = f.read()
         
         # Verify key metadata fields
