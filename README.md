@@ -26,13 +26,27 @@ from publicdata_ca.providers.statcan import download_statcan_table
 download_statcan_table("18100004", "./data/raw")
 ```
 
-**Search and download from a CKAN portal:**
+**Search and download from Open Canada:**
+```python
+from publicdata_ca.providers import OpenCanadaProvider
+from publicdata_ca.provider import DatasetRef
+
+# Search Open Canada portal
+provider = OpenCanadaProvider()
+results = provider.search('housing', rows=5)
+
+# Download CSV resources from a dataset
+ref = DatasetRef(provider='open_canada', id='dataset-id', params={'format': 'CSV'})
+provider.fetch(ref, './data/open_canada')
+```
+
+**Search and download from any CKAN portal:**
 ```python
 from publicdata_ca.providers import CKANProvider
 from publicdata_ca.provider import DatasetRef
 
-# Search Open Canada portal
-provider = CKANProvider(base_url='https://open.canada.ca/data')
+# Search a generic CKAN portal
+provider = CKANProvider(base_url='https://catalog.data.gov')
 results = provider.search('housing', rows=5)
 
 # Download CSV resources from a dataset
@@ -202,6 +216,106 @@ CMHC landing pages can change frequently, causing download failures. Here's how 
 4. **Pin working direct URLs** - If you find a stable Azure blob URL, add it as `direct_url` to skip landing page resolution
 5. **Test after CMHC releases** - Major CMHC data releases (e.g., annual reports) often come with website redesigns
 
+### Open Canada Provider
+
+The Open Canada provider is a convenience wrapper for accessing the Open Government Canada portal (open.canada.ca). The portal is CKAN-backed, so this provider uses the generic CKAN provider internally with pre-configured URLs.
+
+**Key capabilities:**
+- **Simplified API** - No need to specify base URLs repeatedly
+- **Search datasets** in the Open Canada portal
+- **Resolve resources** by format (CSV, JSON, GeoJSON, XLSX, etc.)
+- **Download resources** with automatic format filtering
+- **Bilingual support** - Search in English or French
+
+#### Basic Usage
+
+**Search for datasets:**
+```python
+from publicdata_ca.providers import OpenCanadaProvider
+
+# Initialize provider (base URL is pre-configured)
+provider = OpenCanadaProvider()
+
+# Search for datasets
+results = provider.search('census', rows=5)
+for ref in results:
+    print(f"{ref.id}: {ref.metadata['title']}")
+    print(f"  Organization: {ref.metadata.get('organization', 'N/A')}")
+    print(f"  Formats: {', '.join(ref.metadata['formats'])}")
+    print(f"  Tags: {', '.join(ref.tags[:3])}")
+```
+
+**Download specific resources by format:**
+```python
+from publicdata_ca.provider import DatasetRef
+
+# Download only CSV resources from a dataset
+ref = DatasetRef(
+    provider='open_canada',
+    id='census-2021-population',
+    params={'format': 'CSV'}  # Filter for CSV only
+)
+
+result = provider.fetch(ref, './data/open_canada')
+print(f"Downloaded {len(result['files'])} CSV files")
+```
+
+**Download all resources:**
+```python
+# Omit format parameter to download all formats
+ref = DatasetRef(
+    provider='open_canada',
+    id='housing-data',
+    params={}  # No format filter
+)
+
+result = provider.fetch(ref, './data/open_canada')
+for resource in result['resources']:
+    print(f"{resource['name']}: {resource['format']}")
+```
+
+**Download a specific resource by ID:**
+```python
+# If you know the specific resource ID
+ref = DatasetRef(
+    provider='open_canada',
+    id='housing-data',
+    params={'resource_id': 'abc123-resource-id'}
+)
+
+result = provider.fetch(ref, './data/open_canada')
+```
+
+#### Search Tips
+
+The Open Canada portal contains thousands of datasets from federal departments and agencies:
+
+```python
+provider = OpenCanadaProvider()
+
+# Search by keyword
+results = provider.search('census population', rows=10)
+
+# Search by organization using SOLR syntax
+results = provider.search('organization:statcan', rows=20)
+
+# Search with tags
+results = provider.search('tags:environment', rows=15)
+
+# Boolean operators
+results = provider.search('environment AND climate', rows=5)
+```
+
+#### Examples
+
+See `examples/open_canada_provider_demo.py` for comprehensive usage examples:
+
+```bash
+python examples/open_canada_provider_demo.py
+```
+
+You can browse available datasets at: https://open.canada.ca/en/open-data
+
 ### CKAN Provider (Generic)
 
 The CKAN provider enables searching and downloading data from any CKAN portal. CKAN (Comprehensive Knowledge Archive Network) is a widely-used open-source data portal platform used by governments and organizations worldwide, including Open Canada, Data.gov, and many provincial/municipal portals.
@@ -357,7 +471,7 @@ python examples/ckan_provider_demo.py
 - `publicdata_ca/datasets.py` — curated dataset definitions, pandas helpers, and the `refresh_datasets()` function for automated downloads.
 - `publicdata_ca/normalize.py` — normalization utilities for standardizing time, geography, frequency, and units across datasets.
 - `publicdata_ca/profiles.py` — YAML-based profiles system for multi-project dataset refresh workflows.
-- `publicdata_ca/providers/` — provider integrations such as StatsCan table metadata and CMHC landing-page handling.
+- `publicdata_ca/providers/` — provider integrations such as StatsCan, CMHC, Open Canada, CKAN, Socrata, SDMX, and Bank of Canada Valet.
 - `publicdata_ca/resolvers/` — HTML scrapers that translate landing pages into direct asset URLs.
 - `publicdata_ca/url_cache.py` — URL caching utilities for CMHC resolved URLs.
 - `publicdata_ca/manifest.py` — utilities for building and validating download manifests.

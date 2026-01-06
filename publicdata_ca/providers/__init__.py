@@ -32,6 +32,7 @@ from publicdata_ca.providers.boc_valet import (
     download_valet_series,
     ValetProvider,
 )
+from publicdata_ca.providers.open_canada import OpenCanadaProvider
 
 __all__ = [
     "download_statcan_table",
@@ -57,4 +58,5 @@ __all__ = [
     "fetch_valet_series",
     "download_valet_series",
     "ValetProvider",
+    "OpenCanadaProvider",
 ]
