@@ -9,6 +9,7 @@ validated to prevent accidental writes elsewhere on disk.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -232,10 +233,9 @@ def refresh_datasets(
         - Files are downloaded to their configured target_file locations
         - The function is idempotent: running it multiple times is safe
     """
-    from datetime import datetime, timezone
-    from publicdata_ca.providers.statcan import download_statcan_table
+    from publicdata_ca.http import download_file
     from publicdata_ca.providers.cmhc import download_cmhc_asset
-    from publicdata_ca.resolvers.cmhc_landing import resolve_cmhc_landing_page
+    from publicdata_ca.providers.statcan import download_statcan_table
     
     # Use default datasets if none provided
     source_datasets = list(datasets or DEFAULT_DATASETS)
@@ -294,7 +294,6 @@ def refresh_datasets(
                 # Otherwise, use the landing page resolver
                 if ds.direct_url:
                     # Have a direct URL - download it directly
-                    from publicdata_ca.http import download_file
                     try:
                         download_file(
                             ds.direct_url,
