@@ -89,14 +89,18 @@ SAMPLE_SDMX_DATA_XML = """<?xml version="1.0" encoding="UTF-8"?>
 </message:GenericData>
 """
 
+# SDMX-JSON format structure
+# - Keys like "0:0" represent dimension value indices mapping to metadata arrays
+# - "observations" contains time period index to value mappings
+# - This compact format reduces file size compared to verbose XML
 SAMPLE_SDMX_JSON = {
     "data": {
         "dataSets": [
             {
                 "series": {
-                    "0:0": {
+                    "0:0": {  # Series key indices (dimension value positions)
                         "observations": {
-                            "0": [1000]
+                            "0": [1000]  # Time period index: [observation value]
                         }
                     }
                 }
