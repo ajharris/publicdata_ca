@@ -193,7 +193,7 @@ def test_download_statcan_table_success():
             zip_content = f.read()
         
         # Mock the download_file function
-        def mock_download(url, path, max_retries):
+        def mock_download(url, path, max_retries, write_metadata=True):
             # Write the test ZIP to the specified path
             with open(path, 'wb') as f:
                 f.write(zip_content)
@@ -261,7 +261,7 @@ def test_download_statcan_table_force_redownload():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
-        def mock_download(url, path, max_retries):
+        def mock_download(url, path, max_retries, write_metadata=True):
             with open(path, 'wb') as f:
                 f.write(zip_content)
             return path
@@ -289,7 +289,7 @@ def test_download_statcan_table_with_hyphenated_id():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
-        def mock_download(url, path, max_retries):
+        def mock_download(url, path, max_retries, write_metadata=True):
             with open(path, 'wb') as f:
                 f.write(zip_content)
             # Verify URL uses normalized PID
@@ -317,7 +317,7 @@ def test_download_statcan_table_french_language():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
-        def mock_download(url, path, max_retries):
+        def mock_download(url, path, max_retries, write_metadata=True):
             # Verify URL uses French language
             assert '/fr/' in url
             with open(path, 'wb') as f:
@@ -345,7 +345,7 @@ def test_download_statcan_table_with_manifest():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
-        def mock_download(url, path, max_retries):
+        def mock_download(url, path, max_retries, write_metadata=True):
             with open(path, 'wb') as f:
                 f.write(zip_content)
             return path
@@ -368,7 +368,7 @@ def test_download_statcan_table_cleanup_on_error():
         output_dir.mkdir()
         
         # Create an invalid ZIP file
-        def mock_download(url, path, max_retries):
+        def mock_download(url, path, max_retries, write_metadata=True):
             with open(path, 'wb') as f:
                 f.write(b'not a zip file')
             return path
@@ -393,7 +393,7 @@ def test_download_statcan_table_respects_max_retries():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
-        def mock_download(url, path, max_retries):
+        def mock_download(url, path, max_retries, write_metadata=True):
             assert max_retries == 5
             with open(path, 'wb') as f:
                 f.write(zip_content)

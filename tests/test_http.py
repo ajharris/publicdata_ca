@@ -149,11 +149,12 @@ def test_download_file_creates_file():
         test_data = b'column1,column2\nvalue1,value2\n'
         
         mock_response = Mock()
+        mock_response.headers = {'Content-Type': 'text/csv'}
         # Simulate streaming by returning chunks
         mock_response.read.side_effect = [test_data[:10], test_data[10:], b'']
         
         with patch('publicdata_ca.http.retry_request', return_value=mock_response):
-            result_path = download_file('https://example.com/data.csv', output_path)
+            result_path = download_file('https://example.com/data.csv', output_path, write_metadata=False)
             
             assert result_path == output_path
             assert os.path.exists(output_path)
@@ -161,6 +162,7 @@ def test_download_file_creates_file():
             with open(output_path, 'rb') as f:
                 content = f.read()
                 assert content == test_data
+
 
 
 def test_download_file_streaming_with_chunks():
@@ -172,6 +174,7 @@ def test_download_file_streaming_with_chunks():
         test_data = b'x' * 20000
         
         mock_response = Mock()
+        mock_response.headers = {'Content-Type': 'application/octet-stream'}
         # Simulate reading in chunks
         chunk_size = 8192
         chunks = [test_data[i:i+chunk_size] for i in range(0, len(test_data), chunk_size)]
@@ -179,7 +182,7 @@ def test_download_file_streaming_with_chunks():
         mock_response.read.side_effect = chunks
         
         with patch('publicdata_ca.http.retry_request', return_value=mock_response):
-            download_file('https://example.com/large.dat', output_path, chunk_size=chunk_size)
+            download_file('https://example.com/large.dat', output_path, chunk_size=chunk_size, write_metadata=False)
             
             # Verify file was written correctly
             with open(output_path, 'rb') as f:
@@ -198,13 +201,14 @@ def test_download_file_with_custom_chunk_size():
         custom_chunk_size = 50
         
         mock_response = Mock()
+        mock_response.headers = {'Content-Type': 'application/octet-stream'}
         chunks = [test_data[i:i+custom_chunk_size] 
                   for i in range(0, len(test_data), custom_chunk_size)]
         chunks.append(b'')
         mock_response.read.side_effect = chunks
         
         with patch('publicdata_ca.http.retry_request', return_value=mock_response):
-            download_file('https://example.com/data.dat', output_path, chunk_size=custom_chunk_size)
+            download_file('https://example.com/data.dat', output_path, chunk_size=custom_chunk_size, write_metadata=False)
             
             with open(output_path, 'rb') as f:
                 assert f.read() == test_data
@@ -222,10 +226,11 @@ def test_download_file_respects_max_retries():
         
         with patch('publicdata_ca.http.retry_request') as mock_retry:
             mock_response = Mock()
+            mock_response.headers = {}
             mock_response.read.return_value = b''
             mock_retry.return_value = mock_response
             
-            download_file('https://example.com/data.csv', output_path, max_retries=5)
+            download_file('https://example.com/data.csv', output_path, max_retries=5, write_metadata=False)
             
             # Verify max_retries was passed through
             mock_retry.assert_called_once()
@@ -240,10 +245,11 @@ def test_download_file_respects_custom_headers():
         
         with patch('publicdata_ca.http.retry_request') as mock_retry:
             mock_response = Mock()
+            mock_response.headers = {}
             mock_response.read.return_value = b''
             mock_retry.return_value = mock_response
             
-            download_file('https://example.com/data.csv', output_path, headers=custom_headers)
+            download_file('https://example.com/data.csv', output_path, headers=custom_headers, write_metadata=False)
             
             # Verify headers were passed through
             assert mock_retry.call_args[1]['headers'] == custom_headers
@@ -369,8 +375,62 @@ def test_download_file_without_validation_accepts_html():
             result_path = download_file(
                 'https://example.com/page.html',
                 output_path,
-                validate_content_type=False
+                validate_content_type=False,
+                write_metadata=False
             )
             
             assert result_path == output_path
             assert os.path.exists(output_path)
+
+
+def test_download_file_writes_metadata():
+    """Test that download_file writes provenance metadata by default."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        test_data = b'column1,column2\nvalue1,value2\n'
+        
+        mock_response = Mock()
+        mock_response.headers = {'Content-Type': 'text/csv; charset=utf-8'}
+        mock_response.read.side_effect = [test_data, b'']
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            download_file('https://example.com/data.csv', output_path, write_metadata=True)
+            
+            # Verify data file exists
+            assert os.path.exists(output_path)
+            
+            # Verify metadata file was created
+            meta_file = output_path + '.meta.json'
+            assert os.path.exists(meta_file)
+            
+            # Verify metadata content
+            import json
+            with open(meta_file, 'r') as f:
+                metadata = json.load(f)
+            
+            assert metadata['source_url'] == 'https://example.com/data.csv'
+            assert metadata['content_type'] == 'text/csv; charset=utf-8'
+            assert metadata['file'] == 'data.csv'
+            assert 'hash' in metadata
+            assert 'downloaded_at' in metadata
+
+
+def test_download_file_metadata_disabled():
+    """Test that metadata writing can be disabled."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = os.path.join(tmpdir, 'data.csv')
+        test_data = b'test data'
+        
+        mock_response = Mock()
+        mock_response.headers = {'Content-Type': 'text/csv'}
+        mock_response.read.side_effect = [test_data, b'']
+        
+        with patch('publicdata_ca.http.retry_request', return_value=mock_response):
+            download_file('https://example.com/data.csv', output_path, write_metadata=False)
+            
+            # Verify data file exists
+            assert os.path.exists(output_path)
+            
+            # Verify metadata file was NOT created
+            meta_file = output_path + '.meta.json'
+            assert not os.path.exists(meta_file)
