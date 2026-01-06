@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import List, Dict, Optional, Any
 from publicdata_ca.http import download_file
 from publicdata_ca.resolvers.cmhc_landing import resolve_cmhc_landing_page
+from publicdata_ca.provider import Provider, DatasetRef
 
 
 def resolve_cmhc_assets(landing_url: str) -> List[Dict[str, str]]:
@@ -202,3 +203,185 @@ def _add_cmhc_metadata(file_path: str, asset: Dict[str, Any], landing_url: str) 
     except Exception:
         # Don't fail if metadata enhancement fails
         pass
+
+
+class CMHCProvider(Provider):
+    """
+    Canada Mortgage and Housing Corporation data provider implementation.
+    
+    This provider implements the standard Provider interface for CMHC datasets.
+    It supports resolving landing page URLs to direct download links and fetching
+    CMHC datasets with automatic URL resolution.
+    
+    Example:
+        >>> provider = CMHCProvider()
+        >>> ref = DatasetRef(
+        ...     provider='cmhc',
+        ...     id='rental-market-report',
+        ...     params={'page_url': 'https://www.cmhc-schl.gc.ca/...'}
+        ... )
+        >>> result = provider.fetch(ref, './data/raw')
+        >>> print(result['files'])
+    """
+    
+    def __init__(self, name: str = 'cmhc'):
+        """Initialize the CMHC provider."""
+        super().__init__(name)
+    
+    def search(self, query: str, **kwargs) -> List[DatasetRef]:
+        """
+        Search for CMHC datasets by keyword.
+        
+        Args:
+            query: Search query string
+            **kwargs: Additional search parameters
+        
+        Returns:
+            List of DatasetRef objects matching the query
+        
+        Note:
+            This is a placeholder implementation. Full search functionality
+            would require integration with CMHC's catalog or search API.
+        """
+        # Placeholder - would require CMHC catalog integration
+        return []
+    
+    def resolve(self, ref: DatasetRef) -> Dict[str, Any]:
+        """
+        Resolve a CMHC dataset reference into download metadata.
+        
+        Args:
+            ref: Dataset reference with CMHC landing page URL or direct URL
+        
+        Returns:
+            Dictionary containing resolved URLs and metadata
+        
+        Example:
+            >>> ref = DatasetRef(
+            ...     provider='cmhc',
+            ...     id='housing-starts',
+            ...     params={'page_url': 'https://www.cmhc-schl.gc.ca/...'}
+            ... )
+            >>> metadata = provider.resolve(ref)
+            >>> print(metadata['assets'])
+        """
+        # Check for direct URL first
+        if 'direct_url' in ref.params:
+            return {
+                'url': ref.params['direct_url'],
+                'format': self._detect_format(ref.params['direct_url']),
+                'title': ref.metadata.get('title', ref.id),
+                'provider': self.name,
+            }
+        
+        # Check for landing page URL
+        if 'page_url' in ref.params:
+            # Resolve assets from landing page
+            assets = resolve_cmhc_assets(ref.params['page_url'])
+            return {
+                'assets': assets,
+                'landing_url': ref.params['page_url'],
+                'title': ref.metadata.get('title', ref.id),
+                'provider': self.name,
+            }
+        
+        # No URL provided
+        raise ValueError(
+            f"CMHC dataset reference must include 'page_url' or 'direct_url' in params"
+        )
+    
+    def fetch(
+        self,
+        ref: DatasetRef,
+        output_dir: str,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Download a CMHC dataset to the specified output directory.
+        
+        Args:
+            ref: Dataset reference with CMHC landing page or direct URL
+            output_dir: Directory where files will be saved
+            **kwargs: Additional download parameters (max_retries, asset_filter, etc.)
+        
+        Returns:
+            Dictionary containing downloaded files and metadata
+        
+        Example:
+            >>> ref = DatasetRef(
+            ...     provider='cmhc',
+            ...     id='rental-market-report',
+            ...     params={'page_url': 'https://www.cmhc-schl.gc.ca/...'}
+            ... )
+            >>> result = provider.fetch(ref, './data/raw')
+            >>> print(result['files'])
+        """
+        max_retries = kwargs.get('max_retries', 3)
+        asset_filter = kwargs.get('asset_filter', None)
+        
+        # Check for direct URL first
+        if 'direct_url' in ref.params:
+            # Download directly
+            output_path = Path(output_dir)
+            output_path.mkdir(parents=True, exist_ok=True)
+            
+            # Create filename from ID
+            file_format = self._detect_format(ref.params['direct_url'])
+            output_file = output_path / f"{ref.id}.{file_format}"
+            
+            try:
+                download_file(
+                    ref.params['direct_url'],
+                    str(output_file),
+                    max_retries=max_retries,
+                    validate_content_type=True
+                )
+                
+                return {
+                    'dataset_id': f"cmhc_{ref.id}",
+                    'provider': self.name,
+                    'files': [str(output_file)],
+                    'url': ref.params['direct_url'],
+                }
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to download CMHC dataset {ref.id}: {str(e)}"
+                )
+        
+        # Check for landing page URL
+        if 'page_url' in ref.params:
+            # Use the existing download_cmhc_asset function
+            result = download_cmhc_asset(
+                landing_url=ref.params['page_url'],
+                output_dir=output_dir,
+                asset_filter=asset_filter,
+                max_retries=max_retries
+            )
+            return result
+        
+        # No URL provided
+        raise ValueError(
+            f"CMHC dataset reference must include 'page_url' or 'direct_url' in params"
+        )
+    
+    def _detect_format(self, url: str) -> str:
+        """
+        Detect file format from URL.
+        
+        Args:
+            url: Download URL
+        
+        Returns:
+            File format extension (csv, xlsx, etc.)
+        """
+        url_lower = url.lower()
+        if '.xlsx' in url_lower:
+            return 'xlsx'
+        elif '.csv' in url_lower:
+            return 'csv'
+        elif '.xls' in url_lower:
+            return 'xls'
+        elif '.zip' in url_lower:
+            return 'zip'
+        else:
+            return 'dat'
