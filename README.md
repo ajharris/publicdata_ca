@@ -3,15 +3,19 @@ publicdata_ca is a lightweight Python package for discovering, resolving, and do
 
 ## Quickstart
 
-Install the package in editable mode with dev extras:
+Get started quickly with publicdata_ca:
 
 ```bash
 # Create and activate a virtual environment (Python 3.9+)
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install the package
+# Install the package in editable mode from source
+# (This also installs the 'publicdata' CLI command)
 python -m pip install -e ".[dev]"
+
+# Note: Once published to PyPI, you'll be able to install with:
+# pip install publicdata-ca
 ```
 
 **Download a StatsCan table:**
@@ -22,7 +26,7 @@ from publicdata_ca.providers.statcan import download_statcan_table
 download_statcan_table("18100004", "./data/raw")
 ```
 
-**Refresh all datasets in the catalog:**
+**Refresh all datasets using the CLI:**
 ```bash
 publicdata refresh
 ```
