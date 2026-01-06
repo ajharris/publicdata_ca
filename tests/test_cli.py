@@ -90,7 +90,8 @@ def test_cmd_refresh_with_provider_filter(mock_args, mock_refresh_report):
         call_args = mock_refresh.call_args
         datasets_arg = call_args.kwargs.get('datasets')
         assert datasets_arg is not None
-        assert len(list(datasets_arg)) == 2
+        datasets_list = list(datasets_arg)
+        assert len(datasets_list) == 2
 
 
 def test_cmd_refresh_with_force_download(mock_args, mock_refresh_report):

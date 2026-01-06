@@ -146,27 +146,27 @@ def cmd_refresh(args):
             print("\n" + "="*60)
             print("DETAILED RESULTS")
             print("="*60)
-            for idx, row in report.iterrows():
-                status_symbol = "✓" if row['result'] in ['downloaded', 'exists'] else "✗"
-                print(f"\n{status_symbol} {row['dataset']} ({row['provider']})")
-                print(f"  Status: {row['result']}")
-                if row['notes']:
-                    print(f"  Notes: {row['notes']}")
-                if row['target_file']:
-                    print(f"  File: {row['target_file']}")
+            for row in report.itertuples():
+                status_symbol = "✓" if row.result in ['downloaded', 'exists'] else "✗"
+                print(f"\n{status_symbol} {row.dataset} ({row.provider})")
+                print(f"  Status: {row.result}")
+                if row.notes:
+                    print(f"  Notes: {row.notes}")
+                if row.target_file:
+                    print(f"  File: {row.target_file}")
         
         # Create manifest if requested
         if args.manifest:
             # Convert report to datasets list for manifest
             manifest_datasets = []
-            for idx, row in report.iterrows():
-                if row['result'] in ['downloaded', 'exists'] and row['target_file']:
+            for row in report.itertuples():
+                if row.result in ['downloaded', 'exists'] and row.target_file:
                     manifest_datasets.append({
-                        'dataset_id': row['dataset'],
-                        'provider': row['provider'],
-                        'files': [row['target_file']],
-                        'status': row['result'],
-                        'notes': row['notes']
+                        'dataset_id': row.dataset,
+                        'provider': row.provider,
+                        'files': [row.target_file],
+                        'status': row.result,
+                        'notes': row.notes
                     })
             
             manifest_path = build_manifest_file(
