@@ -19,6 +19,13 @@ from publicdata_ca.providers.socrata import (
     download_socrata_dataset,
     SocrataProvider,
 )
+from publicdata_ca.providers.sdmx import (
+    get_sdmx_dataflow,
+    get_sdmx_data_structure,
+    fetch_sdmx_data,
+    download_sdmx_data,
+    SDMXProvider,
+)
 
 __all__ = [
     "download_statcan_table",
@@ -35,4 +42,9 @@ __all__ = [
     "get_socrata_metadata",
     "download_socrata_dataset",
     "SocrataProvider",
+    "get_sdmx_dataflow",
+    "get_sdmx_data_structure",
+    "fetch_sdmx_data",
+    "download_sdmx_data",
+    "SDMXProvider",
 ]
