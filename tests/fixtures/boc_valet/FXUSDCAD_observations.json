@@ -1,0 +1,14 @@
+{
+  "seriesDetail": {
+    "FXUSDCAD": {
+      "label": "US dollar, closing daily average rate in Canadian dollars",
+      "description": "Closing daily average exchange rate",
+      "type": "Daily"
+    }
+  },
+  "observations": [
+    {"d": "2023-01-03", "v": "1.3500"},
+    {"d": "2023-01-04", "v": "1.3525"},
+    {"d": "2023-01-05", "v": "1.3510"}
+  ]
+}

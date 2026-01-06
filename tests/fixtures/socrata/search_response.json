@@ -1,0 +1,43 @@
+{
+  "results": [
+    {
+      "resource": {
+        "id": "housing-2023",
+        "name": "Housing Data 2023",
+        "description": "Housing market indicators for 2023",
+        "type": "dataset",
+        "url": "https://example.com/housing.csv",
+        "format": "CSV",
+        "createdAt": "2023-01-15T00:00:00Z",
+        "updatedAt": "2023-12-01T00:00:00Z"
+      },
+      "classification": {
+        "categories": ["Housing"],
+        "tags": ["housing", "market", "indicators"]
+      },
+      "metadata": {
+        "domain": "data.example.com"
+      }
+    },
+    {
+      "resource": {
+        "id": "population-2023",
+        "name": "Population Statistics",
+        "description": "Annual population data",
+        "type": "dataset",
+        "url": "https://example.com/population.json",
+        "format": "JSON",
+        "createdAt": "2023-02-01T00:00:00Z",
+        "updatedAt": "2023-11-15T00:00:00Z"
+      },
+      "classification": {
+        "categories": ["Demographics"],
+        "tags": ["population", "census"]
+      },
+      "metadata": {
+        "domain": "data.example.com"
+      }
+    }
+  ],
+  "resultSetSize": 2
+}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<message:Structure xmlns:message="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/message"
+                   xmlns:structure="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/structure"
+                   xmlns:common="http://www.sdmx.org/resources/sdmxml/schemas/v2_1/common">
+    <message:Structures>
+        <structure:Dataflows>
+            <structure:Dataflow id="QNA" agencyID="OECD" version="1.0">
+                <common:Name xml:lang="en">Quarterly National Accounts</common:Name>
+                <common:Description xml:lang="en">National accounts data</common:Description>
+                <structure:Structure>
+                    <Ref agencyID="OECD" id="QNA_DSD" version="1.0"/>
+                </structure:Structure>
+            </structure:Dataflow>
+        </structure:Dataflows>
+    </message:Structures>
+</message:Structure>

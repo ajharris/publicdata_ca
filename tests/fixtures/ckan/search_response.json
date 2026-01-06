@@ -1,0 +1,49 @@
+{
+  "success": true,
+  "result": {
+    "count": 2,
+    "results": [
+      {
+        "id": "census-2021",
+        "name": "census-2021",
+        "title": "Census 2021 Population Data",
+        "notes": "Population statistics from 2021 census",
+        "organization": {
+          "title": "Statistics Agency"
+        },
+        "tags": [
+          {"name": "census"},
+          {"name": "population"}
+        ],
+        "resources": [
+          {
+            "format": "CSV",
+            "url": "https://example.com/data.csv"
+          },
+          {
+            "format": "JSON",
+            "url": "https://example.com/data.json"
+          }
+        ]
+      },
+      {
+        "id": "housing-starts",
+        "name": "housing-starts",
+        "title": "Housing Starts Monthly",
+        "notes": "Monthly housing construction data",
+        "organization": {
+          "title": "Housing Agency"
+        },
+        "tags": [
+          {"name": "housing"}
+        ],
+        "resources": [
+          {
+            "format": "CSV",
+            "url": "https://example.com/housing.csv"
+          }
+        ]
+      }
+    ]
+  }
+}

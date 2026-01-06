@@ -1,0 +1,13 @@
+{
+  "seriesDetail": {
+    "FXUSDCAD": {
+      "label": "US dollar, closing daily average rate in Canadian dollars",
+      "description": "Closing daily average exchange rate for US dollar in Canadian dollars",
+      "dimension": {
+        "key": "d",
+        "name": "Date"
+      },
+      "type": "Daily"
+    }
+  }
+}
