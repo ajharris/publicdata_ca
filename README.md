@@ -77,7 +77,68 @@ The function returns a DataFrame with columns:
 2. Activate it: `source .venv/bin/activate`
 3. Install the package in editable mode with dev extras: `python -m pip install -e ".[dev]"`
 
-This installs the `publicdata` console script, making CLI commands such as `publicdata fetch statcan 14-10-0287-01` available in your shell.
+This installs the `publicdata` console script, making CLI commands available in your shell.
+
+## Command-Line Interface
+
+The `publicdata` CLI provides several commands for working with Canadian public datasets:
+
+### Refresh all datasets
+
+Download or update all datasets in the catalog:
+
+```bash
+# Refresh all datasets
+publicdata refresh
+
+# Refresh only StatsCan datasets
+publicdata refresh --provider statcan
+
+# Force re-download even if files exist
+publicdata refresh --force
+
+# Show detailed results for all datasets
+publicdata refresh --verbose
+
+# Create a manifest file after refresh
+publicdata refresh --manifest
+```
+
+### Fetch a specific dataset
+
+Download a specific dataset by provider and ID:
+
+```bash
+# Download a StatsCan table
+publicdata fetch statcan 14-10-0287-01
+
+# Download a CMHC dataset with manifest
+publicdata fetch cmhc https://www.cmhc-schl.gc.ca/data-page --manifest
+```
+
+### Search for datasets
+
+Search the catalog by keyword:
+
+```bash
+# Search all providers
+publicdata search "housing"
+
+# Search only StatsCan
+publicdata search "employment" --provider statcan
+```
+
+### Manage manifests
+
+Create or validate data manifests:
+
+```bash
+# Create a manifest
+publicdata manifest create --output ./data
+
+# Validate a manifest
+publicdata manifest validate --manifest-file ./data/manifest.json
+```
 
 ## Running tests
 

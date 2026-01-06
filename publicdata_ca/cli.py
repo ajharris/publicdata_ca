@@ -14,6 +14,7 @@ from publicdata_ca.catalog import Catalog
 from publicdata_ca.providers.statcan import download_statcan_table, search_statcan_tables
 from publicdata_ca.providers.cmhc import download_cmhc_asset
 from publicdata_ca.manifest import build_manifest_file
+from publicdata_ca.datasets import refresh_datasets, DEFAULT_DATASETS
 
 
 def cmd_search(args):
@@ -106,6 +107,87 @@ def cmd_fetch(args):
         sys.exit(1)
 
 
+def cmd_refresh(args):
+    """
+    Refresh/download all datasets from the catalog.
+    
+    Args:
+        args: Parsed command-line arguments.
+    """
+    print("Refreshing datasets...")
+    
+    # Filter datasets by provider if specified
+    datasets_to_refresh = None
+    if args.provider:
+        datasets_to_refresh = [d for d in DEFAULT_DATASETS if d.provider == args.provider]
+        print(f"Filtering to {args.provider} datasets only ({len(datasets_to_refresh)} datasets)")
+    else:
+        print(f"Processing all datasets ({len(DEFAULT_DATASETS)} datasets)")
+    
+    # Run the refresh
+    try:
+        report = refresh_datasets(
+            datasets=datasets_to_refresh,
+            force_download=args.force
+        )
+        
+        # Display results summary
+        print("\n" + "="*60)
+        print("REFRESH SUMMARY")
+        print("="*60)
+        
+        # Count results by status
+        status_counts = report['result'].value_counts()
+        for status, count in status_counts.items():
+            print(f"  {status}: {count}")
+        
+        # Show detailed results if verbose or if there are errors
+        if args.verbose or 'error' in status_counts:
+            print("\n" + "="*60)
+            print("DETAILED RESULTS")
+            print("="*60)
+            for idx, row in report.iterrows():
+                status_symbol = "✓" if row['result'] in ['downloaded', 'exists'] else "✗"
+                print(f"\n{status_symbol} {row['dataset']} ({row['provider']})")
+                print(f"  Status: {row['result']}")
+                if row['notes']:
+                    print(f"  Notes: {row['notes']}")
+                if row['target_file']:
+                    print(f"  File: {row['target_file']}")
+        
+        # Create manifest if requested
+        if args.manifest:
+            # Convert report to datasets list for manifest
+            manifest_datasets = []
+            for idx, row in report.iterrows():
+                if row['result'] in ['downloaded', 'exists'] and row['target_file']:
+                    manifest_datasets.append({
+                        'dataset_id': row['dataset'],
+                        'provider': row['provider'],
+                        'files': [row['target_file']],
+                        'status': row['result'],
+                        'notes': row['notes']
+                    })
+            
+            manifest_path = build_manifest_file(
+                output_dir=args.output or './data',
+                datasets=manifest_datasets,
+                manifest_name='refresh_manifest.json'
+            )
+            print(f"\n✓ Manifest created: {manifest_path}")
+        
+        # Exit with error if there were any download failures
+        if 'error' in status_counts:
+            print("\n⚠ Some downloads failed. See detailed results above.")
+            sys.exit(1)
+        else:
+            print("\n✓ Refresh complete!")
+    
+    except Exception as e:
+        print(f"\n✗ Error during refresh: {str(e)}")
+        sys.exit(1)
+
+
 def cmd_manifest(args):
     """
     Create or validate a manifest file.
@@ -168,6 +250,34 @@ def main():
     fetch_parser.add_argument('-f', '--format', help='File format filter (e.g., csv, xlsx)')
     fetch_parser.add_argument('-m', '--manifest', action='store_true', help='Create manifest file')
     fetch_parser.set_defaults(func=cmd_fetch)
+    
+    # Refresh command
+    refresh_parser = subparsers.add_parser('refresh', help='Refresh/download all datasets')
+    refresh_parser.add_argument(
+        '-p', '--provider',
+        choices=['statcan', 'cmhc'],
+        help='Filter by data provider (default: all)'
+    )
+    refresh_parser.add_argument(
+        '-f', '--force',
+        action='store_true',
+        help='Force re-download even if files exist'
+    )
+    refresh_parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        help='Show detailed results for all datasets'
+    )
+    refresh_parser.add_argument(
+        '-m', '--manifest',
+        action='store_true',
+        help='Create manifest file after refresh'
+    )
+    refresh_parser.add_argument(
+        '-o', '--output',
+        help='Output directory for manifest (default: ./data)'
+    )
+    refresh_parser.set_defaults(func=cmd_refresh)
     
     # Manifest command
     manifest_parser = subparsers.add_parser('manifest', help='Create or validate manifest')
