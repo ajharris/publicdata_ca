@@ -43,6 +43,9 @@ def mock_args():
         verbose = False
         manifest = False
         output = None
+        report = False
+        report_format = None
+        report_output = None
     
     return Args()
 
@@ -296,6 +299,9 @@ def test_cmd_profile_run_success(capsys):
         verbose = False
         manifest = False
         output = None
+        report = False
+        report_format = None
+        report_output = None
     
     args = Args()
     
@@ -333,6 +339,9 @@ def test_cmd_profile_run_with_errors(capsys):
         verbose = False
         manifest = False
         output = None
+        report = False
+        report_format = None
+        report_output = None
     
     args = Args()
     
@@ -418,6 +427,9 @@ def test_cmd_profile_run_with_verbose(capsys):
         verbose = True
         manifest = False
         output = None
+        report = False
+        report_format = None
+        report_output = None
     
     args = Args()
     

@@ -253,7 +253,7 @@ def _write_valet_metadata(
     num_observations: int
 ) -> None:
     """
-    Write provenance metadata for a Valet series file.
+    Write provenance metadata for a Valet series file using unified schema.
     
     Creates a .meta.json sidecar file with:
     - Source URL
@@ -273,29 +273,29 @@ def _write_valet_metadata(
     """
     from publicdata_ca.provenance import write_provenance_metadata
     
-    # Build additional metadata
-    additional_metadata = {
-        'provider': 'boc_valet',
+    # Build provider-specific metadata
+    provider_specific = {
         'series_name': series_name,
         'observations': num_observations,
     }
     
     # Add date range if specified
     if start_date:
-        additional_metadata['start_date'] = start_date
+        provider_specific['start_date'] = start_date
     if end_date:
-        additional_metadata['end_date'] = end_date
+        provider_specific['end_date'] = end_date
     
     # Add series metadata
     if series_metadata:
-        additional_metadata['series_metadata'] = series_metadata
+        provider_specific['series_metadata'] = series_metadata
     
     try:
         write_provenance_metadata(
             file_path,
             source_url,
             content_type='application/json',
-            additional_metadata=additional_metadata
+            provider_name='boc_valet',
+            provider_specific=provider_specific
         )
     except Exception as e:
         # Don't fail the download if metadata writing fails

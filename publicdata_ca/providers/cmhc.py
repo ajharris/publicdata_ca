@@ -164,7 +164,7 @@ def download_cmhc_asset(
 
 def _add_cmhc_metadata(file_path: str, asset: Dict[str, Any], landing_url: str) -> None:
     """
-    Add CMHC-specific metadata to an existing provenance file.
+    Add CMHC-specific metadata to an existing provenance file using unified schema.
     
     Enhances the automatically-generated .meta.json file with CMHC-specific
     information like asset title, format, rank, and landing page URL.
@@ -187,15 +187,27 @@ def _add_cmhc_metadata(file_path: str, asset: Dict[str, Any], landing_url: str) 
         with open(meta_file_path, 'r', encoding='utf-8') as f:
             metadata = json.load(f)
         
-        # Add CMHC-specific fields
-        metadata['provider'] = 'cmhc'
-        metadata['landing_page_url'] = landing_url
-        metadata['asset_title'] = asset.get('title', '')
-        metadata['asset_format'] = asset.get('format', '')
+        # Update to use unified schema if not already using it
+        if 'schema_version' not in metadata:
+            metadata['schema_version'] = '1.0'
+        
+        # Build provider section using unified schema
+        if 'provider' not in metadata:
+            metadata['provider'] = {}
+        
+        metadata['provider']['name'] = 'cmhc'
+        
+        # Add CMHC-specific fields to provider.specific
+        if 'specific' not in metadata['provider']:
+            metadata['provider']['specific'] = {}
+        
+        metadata['provider']['specific']['landing_page_url'] = landing_url
+        metadata['provider']['specific']['asset_title'] = asset.get('title', '')
+        metadata['provider']['specific']['asset_format'] = asset.get('format', '')
         
         # Add rank if available
         if 'rank' in asset:
-            metadata['asset_rank'] = asset['rank']
+            metadata['provider']['specific']['asset_rank'] = asset['rank']
         
         # Write updated metadata
         with open(meta_file_path, 'w', encoding='utf-8') as f:

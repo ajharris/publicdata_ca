@@ -277,7 +277,7 @@ def _write_statcan_metadata(
     manifest_data: Optional[Dict[str, Any]]
 ) -> None:
     """
-    Write provenance metadata for StatsCan extracted files.
+    Write provenance metadata for StatsCan extracted files using unified schema.
     
     Creates .meta.json sidecar files for each extracted file with:
     - Source URL (ZIP download URL)
@@ -292,25 +292,25 @@ def _write_statcan_metadata(
     """
     from publicdata_ca.provenance import write_provenance_metadata
     
-    # Build additional metadata common to all files
-    additional_metadata = {
-        'provider': 'statcan',
+    # Build provider-specific metadata
+    provider_specific = {
         'pid': pid,
         'table_number': _format_table_number(pid)
     }
     
     # Add title if available from manifest
     if manifest_data and 'title' in manifest_data:
-        additional_metadata['title'] = manifest_data['title']
+        provider_specific['title'] = manifest_data['title']
     
-    # Write metadata for each extracted file
+    # Write metadata for each extracted file using unified schema
     for file_path in extracted_files:
         try:
             write_provenance_metadata(
                 file_path,
                 source_url,
                 content_type='application/zip',  # Original download was ZIP
-                additional_metadata=additional_metadata
+                provider_name='statcan',
+                provider_specific=provider_specific
             )
         except Exception:
             # Don't fail the download if metadata writing fails

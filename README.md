@@ -113,6 +113,99 @@ download_file(
 - **Server-friendly**: Reduces load on data provider servers
 - **Automatic**: Works transparently when servers support caching headers
 
+### Unified Metadata Schema and Provenance Tracking
+
+All downloaded files are accompanied by `.meta.json` sidecar files that track provenance information using a unified schema across all data providers. This ensures consistent metadata structure and enables reproducibility.
+
+**Metadata Schema Version 1.0:**
+```json
+{
+  "schema_version": "1.0",
+  "file": "data.csv",
+  "source_url": "https://example.com/data.csv",
+  "downloaded_at": "2024-01-06T18:00:00Z",
+  "file_size_bytes": 1024,
+  "hash": {
+    "algorithm": "sha256",
+    "value": "abc123..."
+  },
+  "content_type": "text/csv",
+  "provider": {
+    "name": "statcan",
+    "specific": {
+      "pid": "18100004",
+      "table_number": "18-10-0004",
+      "title": "Consumer Price Index"
+    }
+  }
+}
+```
+
+**Key features:**
+- **Schema versioning**: Forward and backward compatibility support
+- **Provider standardization**: Consistent structure across StatsCan, CMHC, CKAN, and other providers
+- **Integrity verification**: SHA-256 hashes for validating file integrity
+- **Provider-specific metadata**: Extensible structure for provider-unique fields
+
+**Example usage:**
+```python
+from publicdata_ca.provenance import read_provenance_metadata, verify_file_integrity
+
+# Read metadata
+metadata = read_provenance_metadata('./data/table.csv')
+print(f"Downloaded from: {metadata['source_url']}")
+print(f"Provider: {metadata['provider']['name']}")
+
+# Verify file hasn't been modified
+if verify_file_integrity('./data/table.csv'):
+    print("File integrity verified")
+else:
+    print("Warning: File has been modified since download")
+```
+
+### Run-Level Reports
+
+The `refresh` command generates detailed run reports summarizing what changed, what succeeded, what failed, and why. Reports can be exported in CSV or JSON format for analysis and tracking.
+
+**Export a run report:**
+```bash
+# Export as CSV (default)
+publicdata refresh --report
+
+# Export as JSON
+publicdata refresh --report --report-format json
+
+# Specify output path
+publicdata refresh --report --report-output ./reports/latest_run.csv
+```
+
+**Python API:**
+```python
+from publicdata_ca.datasets import refresh_datasets, export_run_report
+
+# Run refresh and get report
+report = refresh_datasets()
+
+# Export to CSV
+export_run_report(report, './reports', format='csv')
+
+# Export to JSON
+export_run_report(report, './reports/run.json', format='json')
+
+# Analyze the report
+print(report[['dataset', 'provider', 'result', 'notes']])
+failures = report[report['result'] == 'error']
+print(f"Failed downloads: {len(failures)}")
+```
+
+**Report fields:**
+- `dataset`: Dataset identifier
+- `provider`: Data provider (statcan, cmhc, etc.)
+- `target_file`: Path to the downloaded file
+- `result`: Status (downloaded, exists, error, manual_required)
+- `notes`: Detailed information about the result
+- `run_started_utc`: Timestamp when the run started
+
 ### CMHC Landing Page Resolver
 The CMHC landing page resolver now includes advanced URL resolution with:
 - **Ranking**: Automatically prioritizes candidates based on file format (XLSX > CSV > XLS > ZIP), URL structure, and other quality indicators

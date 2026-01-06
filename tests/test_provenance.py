@@ -87,14 +87,14 @@ def test_write_provenance_metadata_basic():
 
 
 def test_write_provenance_metadata_with_additional_metadata():
-    """Test writing metadata with additional fields."""
+    """Test writing metadata with additional fields using backward compatibility."""
     with tempfile.TemporaryDirectory() as tmpdir:
         test_file = os.path.join(tmpdir, 'table.csv')
         
         with open(test_file, 'wb') as f:
             f.write(b'test data')
         
-        # Write metadata with additional fields
+        # Write metadata with additional fields (backward compatibility test)
         additional = {
             'provider': 'statcan',
             'pid': '18100004',
@@ -107,13 +107,15 @@ def test_write_provenance_metadata_with_additional_metadata():
             additional_metadata=additional
         )
         
-        # Read and verify
+        # Read and verify - fields should be migrated to unified schema
         with open(meta_file, 'r') as f:
             metadata = json.load(f)
         
-        assert metadata['provider'] == 'statcan'
-        assert metadata['pid'] == '18100004'
-        assert metadata['table_number'] == '18-10-0004'
+        # Verify unified schema structure
+        assert metadata['schema_version'] == '1.0'
+        assert metadata['provider']['name'] == 'statcan'
+        assert metadata['provider']['specific']['pid'] == '18100004'
+        assert metadata['provider']['specific']['table_number'] == '18-10-0004'
 
 
 def test_write_provenance_metadata_file_not_found():
