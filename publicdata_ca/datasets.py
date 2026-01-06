@@ -186,6 +186,173 @@ def build_dataset_catalog(datasets: Iterable[Dataset] | None = None) -> pd.DataF
     ]
 
 
+def refresh_datasets(
+    datasets: Iterable[Dataset] | None = None,
+    force_download: bool = False,
+    skip_existing: bool = True,
+) -> pd.DataFrame:
+    """
+    Refresh dataset downloads by iterating through the catalog and downloading missing files.
+    
+    This function mirrors the notebook automation pattern: it iterates through the dataset
+    catalog, checks which files exist, and downloads missing files using the appropriate
+    provider (StatsCan or CMHC). Returns a detailed run report as a DataFrame.
+    
+    Args:
+        datasets: Iterable of Dataset objects to refresh. If None, uses DEFAULT_DATASETS.
+        force_download: If True, re-download files even if they already exist (default: False).
+        skip_existing: If True, skip downloads for files that already exist (default: True).
+            This is the inverse of force_download and is kept for backward compatibility.
+    
+    Returns:
+        pandas DataFrame with columns:
+            - dataset: Dataset identifier
+            - provider: Provider name (statcan, cmhc)
+            - target_file: Target file path
+            - result: Status (skipped, exists, downloaded, manual_required, error, etc.)
+            - notes: Additional information about the result
+            - run_started_utc: Timestamp when the refresh started (ISO format)
+    
+    Example:
+        >>> # Refresh all default datasets
+        >>> report = refresh_datasets()
+        >>> print(report[['dataset', 'result', 'notes']])
+        
+        >>> # Force re-download of all datasets
+        >>> report = refresh_datasets(force_download=True)
+        
+        >>> # Refresh specific datasets
+        >>> from publicdata_ca.datasets import DEFAULT_DATASETS
+        >>> statcan_only = [d for d in DEFAULT_DATASETS if d.provider == 'statcan']
+        >>> report = refresh_datasets(datasets=statcan_only)
+    
+    Notes:
+        - For StatsCan datasets, uses download_statcan_table from providers.statcan
+        - For CMHC datasets, uses resolve and download from providers.cmhc
+        - Files are downloaded to their configured target_file locations
+        - The function is idempotent: running it multiple times is safe
+    """
+    from datetime import datetime, timezone
+    from publicdata_ca.providers.statcan import download_statcan_table
+    from publicdata_ca.providers.cmhc import download_cmhc_asset
+    from publicdata_ca.resolvers.cmhc_landing import resolve_cmhc_landing_page
+    
+    # Use default datasets if none provided
+    source_datasets = list(datasets or DEFAULT_DATASETS)
+    
+    # Track results
+    refresh_records = []
+    run_started = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    
+    # Resolve force_download vs skip_existing
+    should_skip_existing = skip_existing and not force_download
+    
+    for ds in source_datasets:
+        dest = ds.destination()
+        record = {
+            "dataset": ds.dataset,
+            "provider": ds.provider,
+            "target_file": str(dest) if dest else None,
+            "run_started_utc": run_started,
+            "result": "skipped",
+            "notes": "",
+        }
+        
+        # Check if target file is configured
+        if dest is None:
+            record["result"] = "missing_target"
+            record["notes"] = "No target_file configured"
+            refresh_records.append(record)
+            continue
+        
+        # Process StatsCan datasets
+        if ds.provider == "statcan" and ds.pid:
+            if dest.exists() and should_skip_existing:
+                record["result"] = "exists"
+                record["notes"] = "File already present"
+            else:
+                try:
+                    # Download the table
+                    result = download_statcan_table(
+                        ds.pid,
+                        str(dest.parent),
+                        skip_existing=should_skip_existing
+                    )
+                    if result.get("skipped"):
+                        record["result"] = "exists"
+                        record["notes"] = "File already present"
+                    else:
+                        record["result"] = "downloaded"
+                        record["notes"] = f"Downloaded {len(result.get('files', []))} file(s)"
+                except Exception as exc:
+                    record["result"] = "error"
+                    record["notes"] = f"Download failed: {str(exc)}"
+        
+        # Process CMHC datasets
+        elif ds.provider == "cmhc":
+            resolved_url = ds.direct_url
+            scrape_note = ""
+            
+            # Try to resolve URL from page_url if direct_url not available
+            if not resolved_url and ds.page_url:
+                try:
+                    assets = resolve_cmhc_landing_page(ds.page_url)
+                    if assets:
+                        # Take the first (highest-ranked) asset
+                        resolved_url = assets[0].get("url")
+                        scrape_note = "Resolved direct URL from landing page"
+                except Exception as exc:
+                    scrape_note = f"Failed to resolve landing page: {str(exc)}"
+            
+            if not resolved_url:
+                record["result"] = "manual_required"
+                record["notes"] = "No direct_url available — download from landing page manually"
+                if scrape_note:
+                    record["notes"] += f"; {scrape_note}"
+            else:
+                if dest.exists() and should_skip_existing:
+                    record["result"] = "exists"
+                    record["notes"] = "File already present"
+                    if scrape_note:
+                        record["notes"] += f"; {scrape_note}"
+                else:
+                    note_parts = [scrape_note] if scrape_note else []
+                    try:
+                        # Download using the landing page URL if we have it
+                        # Otherwise use direct URL
+                        download_url = ds.page_url if ds.page_url else resolved_url
+                        result = download_cmhc_asset(
+                            download_url,
+                            str(dest.parent),
+                            max_retries=3
+                        )
+                        
+                        # Check if download was successful
+                        if result.get("files"):
+                            record["result"] = "downloaded"
+                            note_parts.append(f"Downloaded {len(result['files'])} file(s)")
+                        elif result.get("errors"):
+                            record["result"] = "error"
+                            note_parts.extend(result["errors"][:2])  # Include first 2 errors
+                        else:
+                            record["result"] = "error"
+                            note_parts.append("No files downloaded")
+                    except Exception as exc:
+                        record["result"] = "error"
+                        note_parts.append(f"Download error: {str(exc)}")
+                    finally:
+                        record["notes"] = "; ".join(part for part in note_parts if part)
+        
+        else:
+            record["result"] = "unknown_provider"
+            record["notes"] = f"Unhandled provider: {ds.provider}"
+        
+        refresh_records.append(record)
+    
+    # Build DataFrame and return
+    return pd.DataFrame(refresh_records)
+
+
 __all__ = [
     "Dataset",
     "DEFAULT_DATASETS",
@@ -193,4 +360,5 @@ __all__ = [
     "PROCESSED_DATA_DIR",
     "ensure_raw_destination",
     "build_dataset_catalog",
+    "refresh_datasets",
 ]
