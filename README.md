@@ -37,12 +37,39 @@ Resolved CMHC URLs are automatically cached in `publicdata_ca/.cache/` to reduce
 ## Package layout
 
 - `publicdata_ca/catalog.py` — in-memory catalog for registering and searching dataset metadata.
-- `publicdata_ca/datasets.py` — curated dataset definitions and pandas helpers ported from the ingestion notebook.
+- `publicdata_ca/datasets.py` — curated dataset definitions, pandas helpers, and the `refresh_datasets()` function for automated downloads.
 - `publicdata_ca/providers/` — provider integrations such as StatsCan table metadata and CMHC landing-page handling.
 - `publicdata_ca/resolvers/` — HTML scrapers that translate landing pages into direct asset URLs.
 - `publicdata_ca/url_cache.py` — URL caching utilities for CMHC resolved URLs.
 - `publicdata_ca/manifest.py` — utilities for building and validating download manifests.
 - `tests/` — pytest suite covering the high-level catalog and manifest flows.
+
+## Automated dataset refresh
+
+The `refresh_datasets()` function provides automated downloading of datasets from the catalog. It iterates through datasets, downloads missing files, and returns a detailed report as a pandas DataFrame.
+
+```python
+from publicdata_ca import refresh_datasets, DEFAULT_DATASETS
+
+# Refresh all default datasets
+report = refresh_datasets()
+print(report[['dataset', 'provider', 'result', 'notes']])
+
+# Refresh only StatsCan datasets
+statcan_only = [d for d in DEFAULT_DATASETS if d.provider == 'statcan']
+report = refresh_datasets(datasets=statcan_only)
+
+# Force re-download even if files exist
+report = refresh_datasets(force_download=True)
+```
+
+The function returns a DataFrame with columns:
+- `dataset`: Dataset identifier
+- `provider`: Provider name (statcan, cmhc)
+- `target_file`: Target file path
+- `result`: Status (exists, downloaded, error, manual_required, etc.)
+- `notes`: Additional information about the result
+- `run_started_utc`: Timestamp when the refresh started
 
 ## Editable install
 

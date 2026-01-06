@@ -15,6 +15,7 @@ from publicdata_ca.datasets import (
     DEFAULT_DATASETS,
     Dataset,
     build_dataset_catalog,
+    refresh_datasets,
 )
 from publicdata_ca.http import get_default_headers, retry_request
 from publicdata_ca.manifest import build_manifest_file, build_run_manifest
@@ -28,4 +29,5 @@ __all__ = [
     "build_run_manifest",
     "retry_request",
     "get_default_headers",
+    "refresh_datasets",
 ]
