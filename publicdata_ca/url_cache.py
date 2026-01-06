@@ -8,7 +8,7 @@ and validated before use.
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 
@@ -41,7 +41,7 @@ def _get_cache_file_path(landing_url: str) -> Path:
     return _get_cache_dir() / cache_filename
 
 
-def load_cached_urls(landing_url: str) -> Optional[List[Dict[str, str]]]:
+def load_cached_urls(landing_url: str) -> Optional[List[Dict[str, Any]]]:
     """
     Load cached URLs for a given landing page.
     
@@ -82,7 +82,7 @@ def load_cached_urls(landing_url: str) -> Optional[List[Dict[str, str]]]:
         return None
 
 
-def save_cached_urls(landing_url: str, assets: List[Dict[str, str]]) -> None:
+def save_cached_urls(landing_url: str, assets: List[Dict[str, Any]]) -> None:
     """
     Save resolved URLs to cache for a given landing page.
     

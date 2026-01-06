@@ -7,7 +7,7 @@ may change, requiring dynamic resolution.
 """
 
 import re
-from typing import List, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 from publicdata_ca.http import retry_request
 from publicdata_ca.url_cache import load_cached_urls, save_cached_urls
@@ -147,7 +147,7 @@ def resolve_cmhc_landing_page(
     validate: bool = True,
     max_validation_attempts: int = 5,
     use_cache: bool = True
-) -> List[Dict[str, str]]:
+) -> List[Dict[str, Any]]:
     """
     Scrape and resolve direct download URLs from a CMHC landing page.
     
