@@ -18,7 +18,12 @@ from publicdata_ca.datasets import (
     build_dataset_catalog,
     refresh_datasets,
 )
-from publicdata_ca.http import get_default_headers, retry_request
+from publicdata_ca.http import get_default_headers, retry_request, download_file
+from publicdata_ca.http_cache import (
+    clear_cache_metadata,
+    load_cache_metadata,
+    get_conditional_headers,
+)
 from publicdata_ca.manifest import build_manifest_file, build_run_manifest
 from publicdata_ca.normalize import (
     NormalizedPeriod,
@@ -60,6 +65,10 @@ __all__ = [
     "build_run_manifest",
     "retry_request",
     "get_default_headers",
+    "download_file",
+    "clear_cache_metadata",
+    "load_cache_metadata",
+    "get_conditional_headers",
     "refresh_datasets",
     "Provider",
     "DatasetRef",
