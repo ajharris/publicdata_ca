@@ -6,6 +6,7 @@ to ensure the extraction logic works with realistic StatsCan data packages.
 """
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -90,7 +91,6 @@ def test_download_statcan_table_with_fixture():
         # Mock the download_file function to use our fixture
         def mock_download(url, path, max_retries, write_metadata=True):
             # Copy the fixture to the download path
-            import shutil
             shutil.copy(SAMPLE_ZIP_FILE, path)
             return path
         
@@ -133,7 +133,6 @@ def test_download_statcan_table_data_integrity():
         output_dir = Path(tmpdir)
         
         def mock_download(url, path, max_retries, write_metadata=True):
-            import shutil
             shutil.copy(SAMPLE_ZIP_FILE, path)
             return path
         
@@ -173,7 +172,6 @@ def test_download_statcan_table_metadata_content():
         output_dir = Path(tmpdir)
         
         def mock_download(url, path, max_retries, write_metadata=True):
-            import shutil
             shutil.copy(SAMPLE_ZIP_FILE, path)
             return path
         
@@ -204,7 +202,6 @@ def test_download_statcan_table_with_hyphenated_id():
         output_dir = Path(tmpdir)
         
         def mock_download(url, path, max_retries, write_metadata=True):
-            import shutil
             shutil.copy(SAMPLE_ZIP_FILE, path)
             # Verify the URL uses normalized PID
             assert '18100004' in url, "URL should use normalized PID"
@@ -232,7 +229,6 @@ def test_download_statcan_table_skip_existing_with_fixture():
         
         # First download
         def mock_download(url, path, max_retries, write_metadata=True):
-            import shutil
             shutil.copy(SAMPLE_ZIP_FILE, path)
             return path
         

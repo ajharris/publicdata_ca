@@ -46,7 +46,10 @@ def test_resolve_cmhc_landing_page_with_html_fixture():
         )
     
     # Verify we extracted the expected assets
-    assert len(assets) >= 7  # At least 7 unique data files (excluding duplicates)
+    # Expected files from fixture: housing-starts-2023.xlsx, market-indicators.csv, 
+    # regional-data.csv, prices.xlsx, historical-data.xls, complete-dataset.zip, rental-data.csv
+    # (Note: temp-export.csv with query param is not extracted, duplicate market-indicators is filtered)
+    assert len(assets) >= 7, f"Expected at least 7 unique data files, got {len(assets)}"
     
     # Check that we have different file formats
     formats = {asset['format'] for asset in assets}
