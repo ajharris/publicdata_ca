@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CMHC Housing Market Data - Sample Landing Page</title>
+    <meta name="description" content="Access CMHC housing market statistics and data files">
+</head>
+<body>
+    <header>
+        <h1>Housing Market Data Portal</h1>
+        <p>Download the latest housing market statistics and indicators</p>
+    </header>
+    
+    <main>
+        <section class="data-downloads">
+            <h2>Available Data Files</h2>
+            
+            <div class="file-list">
+                <div class="file-item">
+                    <a href="/data/housing-starts-2023.xlsx">Housing Starts 2023 - Annual Data</a>
+                    <p>Complete housing starts data for 2023</p>
+                </div>
+                
+                <div class="file-item">
+                    <a href="/download/market-indicators.csv">Market Indicators - Monthly</a>
+                    <p>Monthly housing market indicators</p>
+                </div>
+                
+                <div class="file-item">
+                    <a href="regional-data.csv">Regional Housing Data</a>
+                    <p>Housing data by region</p>
+                </div>
+                
+                <div class="file-item">
+                    <a href="https://external.example.com/cmhc/prices.xlsx">House Prices</a>
+                    <p>Average house prices by market</p>
+                </div>
+                
+                <div class="file-item">
+                    <!-- Test old Excel format -->
+                    <a href="/legacy/historical-data.xls">Historical Data (1990-2020)</a>
+                    <p>Legacy format historical data</p>
+                </div>
+                
+                <div class="file-item">
+                    <!-- Test ZIP archive -->
+                    <a href="/data/complete-dataset.zip">Complete Dataset Archive</a>
+                    <p>All data files in one archive</p>
+                </div>
+                
+                <div class="file-item">
+                    <!-- Test data attribute -->
+                    <div data-url="/api/download/rental-data.csv">Rental Market Data</div>
+                    <p>Rental market statistics</p>
+                </div>
+                
+                <div class="file-item">
+                    <!-- Test duplicate URL -->
+                    <a href="/download/market-indicators.csv">Market Indicators - Alternative Link</a>
+                    <p>Same data, different link text</p>
+                </div>
+                
+                <div class="file-item">
+                    <!-- Test with query parameters (lower rank) -->
+                    <a href="/data/temp-export.csv?session=abc123">Temporary Export</a>
+                    <p>Session-based export</p>
+                </div>
+            </div>
+        </section>
+        
+        <section class="related-links">
+            <h2>Related Resources</h2>
+            <!-- These should not be extracted (not data files) -->
+            <ul>
+                <li><a href="/about.html">About CMHC</a></li>
+                <li><a href="/methodology.pdf">Methodology</a></li>
+                <li><a href="/contact">Contact Us</a></li>
+            </ul>
+        </section>
+    </main>
+</body>
+</html>
