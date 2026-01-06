@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "result": {
+    "count": 2,
+    "results": [
+      {
+        "id": "canadian-housing-data",
+        "name": "canadian-housing-data",
+        "title": "Canadian Housing Market Data",
+        "notes": "Comprehensive housing market statistics across Canada",
+        "organization": {
+          "title": "Canada Mortgage and Housing Corporation"
+        },
+        "tags": [
+          {"name": "housing"},
+          {"name": "market"},
+          {"name": "cmhc"}
+        ],
+        "resources": [
+          {
+            "format": "CSV",
+            "url": "https://open.canada.ca/data/housing.csv"
+          },
+          {
+            "format": "XLSX",
+            "url": "https://open.canada.ca/data/housing.xlsx"
+          }
+        ]
+      },
+      {
+        "id": "labour-force-survey",
+        "name": "labour-force-survey",
+        "title": "Labour Force Survey Data",
+        "notes": "Monthly labour force statistics",
+        "organization": {
+          "title": "Statistics Canada"
+        },
+        "tags": [
+          {"name": "labour"},
+          {"name": "employment"}
+        ],
+        "resources": [
+          {
+            "format": "CSV",
+            "url": "https://open.canada.ca/data/lfs.csv"
+          }
+        ]
+      }
+    ]
+  }
+}

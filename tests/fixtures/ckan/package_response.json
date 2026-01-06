@@ -1,0 +1,40 @@
+{
+  "success": true,
+  "result": {
+    "id": "census-2021",
+    "name": "census-2021",
+    "title": "Census 2021 Population Data",
+    "notes": "Population statistics from 2021 census",
+    "organization": {
+      "title": "Statistics Agency"
+    },
+    "tags": [
+      {"name": "census"},
+      {"name": "population"}
+    ],
+    "metadata_created": "2021-01-01T00:00:00",
+    "metadata_modified": "2021-06-01T00:00:00",
+    "resources": [
+      {
+        "id": "resource-1",
+        "name": "Census Data CSV",
+        "url": "https://example.com/census.csv",
+        "format": "CSV",
+        "description": "Census data in CSV format",
+        "created": "2021-01-01T00:00:00",
+        "last_modified": "2021-06-01T00:00:00",
+        "size": 1024000
+      },
+      {
+        "id": "resource-2",
+        "name": "Census Data JSON",
+        "url": "https://example.com/census.json",
+        "format": "JSON",
+        "description": "Census data in JSON format",
+        "created": "2021-01-01T00:00:00",
+        "last_modified": "2021-06-01T00:00:00",
+        "size": 2048000
+      }
+    ]
+  }
+}

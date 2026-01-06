@@ -1,0 +1,33 @@
+{
+  "id": "abc-123",
+  "name": "Housing Data 2023",
+  "description": "Housing market indicators for 2023",
+  "category": "Housing",
+  "tags": ["housing", "market", "indicators"],
+  "createdAt": 1673740800,
+  "rowsUpdatedAt": 1701388800,
+  "displayType": "table",
+  "columns": [
+    {
+      "id": 1,
+      "name": "Year",
+      "dataTypeName": "number",
+      "fieldName": "year"
+    },
+    {
+      "id": 2,
+      "name": "Region",
+      "dataTypeName": "text",
+      "fieldName": "region"
+    },
+    {
+      "id": 3,
+      "name": "Housing_Starts",
+      "dataTypeName": "number",
+      "fieldName": "housing_starts"
+    }
+  ],
+  "metadata": {
+    "domain": "data.example.com"
+  }
+}

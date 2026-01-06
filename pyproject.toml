@@ -39,5 +39,8 @@ where = ["."]
 include = ["publicdata_ca*"]
 
 [tool.pytest.ini_options]
-addopts = "-ra"
+addopts = "-ra -m 'not smoke'"
 testpaths = ["tests"]
+markers = [
+  "smoke: marks tests as smoke tests (deselected by default, use -m smoke to run)"
+]
