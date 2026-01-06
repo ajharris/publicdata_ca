@@ -7,9 +7,10 @@ may change, requiring dynamic resolution.
 """
 
 import re
-from typing import List, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urljoin, urlparse
 from publicdata_ca.http import retry_request
+from publicdata_ca.url_cache import load_cached_urls, save_cached_urls
 
 
 # Constants for ranking
@@ -144,8 +145,9 @@ def _rank_candidate(candidate: Dict[str, str]) -> int:
 def resolve_cmhc_landing_page(
     landing_url: str,
     validate: bool = True,
-    max_validation_attempts: int = 5
-) -> List[Dict[str, str]]:
+    max_validation_attempts: int = 5,
+    use_cache: bool = True
+) -> List[Dict[str, Any]]:
     """
     Scrape and resolve direct download URLs from a CMHC landing page.
     
@@ -158,6 +160,7 @@ def resolve_cmhc_landing_page(
         landing_url: URL of the CMHC landing/catalog page.
         validate: If True, validates URLs to reject HTML responses (default: True).
         max_validation_attempts: Maximum number of top candidates to validate (default: 5).
+        use_cache: If True, uses cached URLs if available and valid (default: True).
     
     Returns:
         List of dictionaries, each containing:
@@ -179,7 +182,25 @@ def resolve_cmhc_landing_page(
         - Validates top candidates to reject HTML responses
         - Extracts titles from link text or filenames
         - Robust to HTML structure variations
+        - Caches resolved URLs to reduce churn across runs
     """
+    # Try to load from cache first
+    if use_cache:
+        cached_assets = load_cached_urls(landing_url)
+        if cached_assets is not None:
+            # Validate cached URLs if validation is requested
+            if validate and cached_assets:
+                # Check if the top cached URL is still valid
+                top_asset = cached_assets[0] if cached_assets else None
+                if top_asset:
+                    is_valid, _ = _check_content_type(top_asset['url'])
+                    if is_valid:
+                        # Cache is valid, return cached assets
+                        return cached_assets
+                    # If validation fails, fall through to re-resolve
+            else:
+                # No validation requested, use cache as-is
+                return cached_assets
     # Fetch the landing page
     response = retry_request(landing_url)
     html_content = response.read().decode('utf-8', errors='ignore')
@@ -298,6 +319,10 @@ def resolve_cmhc_landing_page(
         
         # Re-sort after validation to move invalid assets to bottom
         assets.sort(key=lambda x: x['rank'], reverse=True)
+    
+    # Save to cache if enabled and we have valid assets
+    if use_cache and assets:
+        save_cached_urls(landing_url, assets)
     
     return assets
 
