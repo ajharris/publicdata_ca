@@ -26,6 +26,12 @@ from publicdata_ca.providers.sdmx import (
     download_sdmx_data,
     SDMXProvider,
 )
+from publicdata_ca.providers.boc_valet import (
+    get_valet_series_metadata,
+    fetch_valet_series,
+    download_valet_series,
+    ValetProvider,
+)
 
 __all__ = [
     "download_statcan_table",
@@ -47,4 +53,8 @@ __all__ = [
     "fetch_sdmx_data",
     "download_sdmx_data",
     "SDMXProvider",
+    "get_valet_series_metadata",
+    "fetch_valet_series",
+    "download_valet_series",
+    "ValetProvider",
 ]
