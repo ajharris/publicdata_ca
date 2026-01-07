@@ -85,7 +85,16 @@ def download_statcan_table(
     try:
         # Download ZIP file to temporary location
         zip_path = output_path / f"{pid}_temp.zip"
-        download_file(download_url, str(zip_path), max_retries=max_retries, write_metadata=False)
+        
+        # StatsCan WDS API requires specific Accept header for ZIP files
+        # Using Accept: */* results in HTTP 406 error
+        statcan_headers = {
+            'User-Agent': 'publicdata_ca/0.1.0 (Python; Canadian Public Data Client)',
+            'Accept': 'application/zip',
+            'Accept-Encoding': 'gzip, deflate',
+        }
+        
+        download_file(download_url, str(zip_path), max_retries=max_retries, write_metadata=False, headers=statcan_headers)
         
         # Extract ZIP file
         extracted_files = _extract_zip(zip_path, output_path, pid)
