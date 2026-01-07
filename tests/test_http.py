@@ -97,7 +97,7 @@ def test_retry_request_does_not_retry_4xx_errors():
         # 404 should not be retried
         mock_response = Mock()
         mock_response.status_code = 404
-        error = requests.HTTPError()
+        error = requests.HTTPError("404 Client Error")
         error.response = mock_response
         mock_get.side_effect = error
         
@@ -119,7 +119,7 @@ def test_retry_request_retries_5xx_errors():
         # Fail with 500, then succeed
         mock_error = Mock()
         mock_error.status_code = 500
-        error = requests.HTTPError()
+        error = requests.HTTPError("500 Server Error")
         error.response = mock_error
         mock_get.side_effect = [error, mock_success]
         
@@ -140,7 +140,7 @@ def test_retry_request_retries_429_rate_limit():
         # Fail with 429, then succeed
         mock_error = Mock()
         mock_error.status_code = 429
-        error = requests.HTTPError()
+        error = requests.HTTPError("429 Too Many Requests")
         error.response = mock_error
         mock_get.side_effect = [error, mock_success]
         
@@ -528,7 +528,7 @@ def test_download_file_revalidation_304_not_modified():
             # Raise HTTPError with 304 status
             mock_response = Mock()
             mock_response.status_code = 304
-            error = requests.HTTPError()
+            error = requests.HTTPError("304 Not Modified")
             error.response = mock_response
             raise error
         
