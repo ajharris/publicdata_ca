@@ -86,12 +86,10 @@ def download_statcan_table(
         # Download ZIP file to temporary location
         zip_path = output_path / f"{pid}_temp.zip"
         
-        # StatsCan WDS API requires specific Accept header for binary/ZIP downloads
-        # The API returns HTTP 406 if the Accept header doesn't match what it can provide
-        # Use application/octet-stream for binary ZIP file downloads
+        # StatsCan WDS API is sensitive to Accept headers
+        # Create custom headers without the Accept header to avoid HTTP 406 errors
         statcan_headers = {
-            **get_default_headers(),
-            'Accept': 'application/octet-stream',
+            'User-Agent': get_default_headers()['User-Agent'],
         }
         
         download_file(download_url, str(zip_path), max_retries=max_retries, write_metadata=False, headers=statcan_headers)

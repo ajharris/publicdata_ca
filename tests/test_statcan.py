@@ -432,9 +432,9 @@ def test_download_statcan_table_sets_correct_accept_header():
         with patch('publicdata_ca.providers.statcan.download_file', side_effect=mock_download):
             download_statcan_table('18100004', str(output_dir), skip_existing=False)
         
-        # Verify that headers were passed and contain correct Accept header
+        # Verify that headers were passed without Accept header
+        # StatsCan API is sensitive to Accept headers and works best without one
         assert received_headers is not None, "Headers should be passed to download_file"
-        assert 'Accept' in received_headers, "Accept header should be present"
-        assert received_headers['Accept'] == 'application/octet-stream', \
-            "Accept header should be 'application/octet-stream' to avoid HTTP 406 error"
+        assert 'Accept' not in received_headers, \
+            "Accept header should NOT be present to avoid HTTP 406 error with StatCan API"
         assert 'User-Agent' in received_headers, "User-Agent header should be present"
