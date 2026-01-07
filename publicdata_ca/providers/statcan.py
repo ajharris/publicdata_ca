@@ -8,7 +8,7 @@ import json
 import zipfile
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from publicdata_ca.http import download_file
+from publicdata_ca.http import download_file, get_default_headers
 from publicdata_ca.provider import Provider, DatasetRef
 
 
@@ -89,9 +89,8 @@ def download_statcan_table(
         # StatsCan WDS API requires specific Accept header for ZIP files
         # Using Accept: */* results in HTTP 406 error
         statcan_headers = {
-            'User-Agent': 'publicdata_ca/0.1.0 (Python; Canadian Public Data Client)',
+            **get_default_headers(),
             'Accept': 'application/zip',
-            'Accept-Encoding': 'gzip, deflate',
         }
         
         download_file(download_url, str(zip_path), max_retries=max_retries, write_metadata=False, headers=statcan_headers)
