@@ -81,7 +81,7 @@ def test_download_cmhc_asset_successful_download():
         test_csv_data = b'col1,col2\nval1,val2\n'
         mock_download_response = Mock()
         mock_download_response.headers = {'Content-Type': 'text/csv'}
-        mock_download_response.read.side_effect = [test_csv_data, b'']
+        mock_download_response.iter_content = Mock(return_value=[test_csv_data])
         
         def mock_retry_request(url, *args, **kwargs):
             if 'data.csv' in url:
@@ -139,7 +139,7 @@ def test_download_cmhc_asset_mixed_success_and_failure():
                 # Valid CSV
                 mock_response = Mock()
                 mock_response.headers = {'Content-Type': 'text/csv'}
-                mock_response.read.side_effect = [test_csv_data, b'']
+                mock_response.iter_content = Mock(return_value=[test_csv_data])
                 return mock_response
             elif 'bad.csv' in url:
                 # HTML response (invalid)
@@ -195,7 +195,7 @@ def test_download_cmhc_asset_with_filter():
             if 'data.csv' in url:
                 mock_response = Mock()
                 mock_response.headers = {'Content-Type': 'text/csv'}
-                mock_response.read.side_effect = [test_csv_data, b'']
+                mock_response.iter_content = Mock(return_value=[test_csv_data])
                 return mock_response
             else:
                 return mock_landing_response

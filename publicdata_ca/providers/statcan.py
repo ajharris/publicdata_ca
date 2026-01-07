@@ -5,11 +5,17 @@ This module provides functionality to download tables and datasets from Statisti
 """
 
 import json
+import time
 import zipfile
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from publicdata_ca.http import download_file, get_default_headers
+from publicdata_ca.http import download_file, get_default_headers, retry_request
 from publicdata_ca.provider import Provider, DatasetRef
+
+
+_STATCAN_MANIFEST_READY_STATUSES = {'SUCCESS', 'DONE', 'READY'}
+_STATCAN_MANIFEST_WAIT_STATUSES = {'PENDING', 'PROGRESS', 'RUNNING'}
+_STATCAN_MANIFEST_POLL_INTERVAL_SECONDS = 2
 
 
 def download_statcan_table(
@@ -79,18 +85,19 @@ def download_statcan_table(
             'skipped': True
         }
     
-    # Build StatsCan WDS API URL
-    download_url = _build_wds_url(pid, language)
-    
     try:
+        # Retrieve manifest metadata and download link from StatsCan WDS
+        wds_manifest = _get_wds_download_manifest(pid, language, max_retries)
+        download_url = wds_manifest['download_link']
+        manifest_object = wds_manifest['object']
+        manifest_title = _extract_manifest_title(manifest_object, language, pid)
+        
         # Download ZIP file to temporary location
         zip_path = output_path / f"{pid}_temp.zip"
         
-        # StatsCan WDS API requires specific Accept header for ZIP files
-        # Using Accept: */* results in HTTP 406 error
+        # StatsCan WDS API is sensitive to Accept headers; omit it to avoid HTTP 406 errors
         statcan_headers = {
-            **get_default_headers(),
-            'Accept': 'application/zip',
+            'User-Agent': get_default_headers()['User-Agent'],
         }
         
         download_file(download_url, str(zip_path), max_retries=max_retries, write_metadata=False, headers=statcan_headers)
@@ -98,8 +105,14 @@ def download_statcan_table(
         # Extract ZIP file
         extracted_files = _extract_zip(zip_path, output_path, pid)
         
-        # Parse manifest if available
-        manifest_data = _parse_manifest(output_path, pid)
+        # Parse manifest if available and merge with WDS metadata
+        manifest_data = _parse_manifest(output_path, pid) or {}
+        if not manifest_data.get('title'):
+            manifest_data['title'] = manifest_title
+        manifest_data['wds_manifest'] = manifest_object
+        manifest_data['manifest_url'] = wds_manifest['manifest_url']
+        manifest_data['download_link'] = download_url
+        manifest_data['manifest_status'] = wds_manifest['status']
         
         # Write provenance metadata for extracted files
         _write_statcan_metadata(
@@ -118,7 +131,7 @@ def download_statcan_table(
             'provider': 'statcan',
             'files': extracted_files,
             'url': download_url,
-            'title': manifest_data.get('title', f'StatsCan Table {pid}') if manifest_data else f'StatsCan Table {pid}',
+            'title': manifest_data.get('title', f'StatsCan Table {pid}'),
             'pid': pid,
             'skipped': False
         }
@@ -187,16 +200,106 @@ def _normalize_pid(table_id: str) -> str:
 
 def _build_wds_url(pid: str, language: str = "en") -> str:
     """
-    Build StatsCan WDS API URL for full table CSV download.
+    Build StatsCan WDS API URL for full table CSV manifest metadata.
     
     Args:
         pid: 8-digit Product ID.
         language: Language code ('en' or 'fr').
     
     Returns:
-        Full WDS API URL.
+        Full WDS API manifest URL.
     """
-    return f"https://www150.statcan.gc.ca/t1/wds/rest/getFullTableDownloadCSV/{language}/{pid}"
+    return f"https://www150.statcan.gc.ca/t1/wds/rest/getFullTableDownloadCSV/{pid}/{language}"
+
+
+def _get_wds_download_manifest(pid: str, language: str, max_retries: int) -> Dict[str, Any]:
+    """Retrieve the StatsCan WDS manifest describing the table download."""
+    manifest_url = _build_wds_url(pid, language)
+    headers = get_default_headers().copy()
+    headers['Accept'] = 'application/json'
+    poll_attempts = max(1, max_retries)
+    
+    for attempt in range(poll_attempts):
+        response = retry_request(manifest_url, max_retries=max_retries, headers=headers)
+        payload = _parse_wds_json(response, manifest_url)
+        status = str(payload.get('status', '')).upper()
+        
+        if status in _STATCAN_MANIFEST_READY_STATUSES:
+            manifest_object = _extract_manifest_object(payload)
+            download_link = (
+                manifest_object.get('downloadLink') or
+                manifest_object.get('downloadlink') or
+                manifest_object.get('downloadURL') or
+                manifest_object.get('downloadUrl')
+            )
+            if not download_link:
+                raise RuntimeError("StatsCan WDS response did not include a downloadLink entry")
+            return {
+                'manifest_url': manifest_url,
+                'download_link': download_link,
+                'object': manifest_object,
+                'status': status,
+                'raw': payload
+            }
+        
+        if status in _STATCAN_MANIFEST_WAIT_STATUSES and attempt < poll_attempts - 1:
+            time.sleep(_STATCAN_MANIFEST_POLL_INTERVAL_SECONDS)
+            continue
+        
+        message = payload.get('message') or payload.get('error') or f"Unexpected status '{status}'"
+        raise RuntimeError(f"StatsCan WDS error for table {pid}: {message}")
+    
+    raise RuntimeError(
+        f"StatsCan WDS download for table {pid} did not become available after {poll_attempts} attempts"
+    )
+
+
+def _parse_wds_json(response, manifest_url: str) -> Dict[str, Any]:
+    """Safely parse JSON from a WDS manifest response."""
+    try:
+        payload = response.json()
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Invalid JSON returned from StatsCan manifest endpoint {manifest_url}: {exc}") from exc
+    if isinstance(payload, list):
+        if not payload:
+            raise RuntimeError(f"StatsCan manifest endpoint {manifest_url} returned an empty response list")
+        payload = payload[0]
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Unexpected manifest payload type {type(payload)} from {manifest_url}")
+    return payload
+
+
+def _extract_manifest_object(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract the manifest object from the WDS payload."""
+    manifest_object = payload.get('object')
+    if manifest_object is None:
+        manifest_object = payload.get('objects') or payload.get('objectList')
+    if manifest_object is None and any(
+        key in payload for key in ('downloadLink', 'downloadlink', 'downloadURL', 'downloadUrl')
+    ):
+        manifest_object = payload
+    if isinstance(manifest_object, list):
+        if not manifest_object:
+            raise RuntimeError('StatsCan WDS response returned an empty object list')
+        manifest_object = manifest_object[0]
+    if isinstance(manifest_object, str):
+        return {'downloadLink': manifest_object}
+    if isinstance(manifest_object, dict):
+        return manifest_object
+    raise RuntimeError(
+        f"StatsCan WDS response missing object metadata: {json.dumps(payload)[:200]}"
+    )
+
+
+def _extract_manifest_title(manifest_object: Dict[str, Any], language: str, pid: str) -> str:
+    """Determine the best title to use for the dataset based on manifest metadata."""
+    language = language.lower()
+    title_key = 'titleEn' if language == 'en' else 'titleFr'
+    title = manifest_object.get(title_key)
+    if not title:
+        # Fallbacks if title isn't language-specific
+        title = manifest_object.get('title') or manifest_object.get('tableTitle')
+    return title or f'StatsCan Table {pid}'
 
 
 def _extract_zip(zip_path: Path, output_dir: Path, pid: str) -> List[str]:
