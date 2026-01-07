@@ -1,12 +1,12 @@
 """
-Example demonstrating two ways to use DatasetRef with providers.
+Example demonstrating three ways to use DatasetRef with providers.
 
 This example shows:
 1. Using the convenience function fetch_dataset()
 2. Using provider instances directly
 3. Using the global registry to get providers
 
-Both approaches work equally well - choose based on your use case.
+All three approaches work equally well - choose based on your use case.
 """
 
 from publicdata_ca import (

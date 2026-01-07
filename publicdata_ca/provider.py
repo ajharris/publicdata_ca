@@ -273,49 +273,27 @@ _global_registry = ProviderRegistry()
 
 def _register_default_providers() -> None:
     """Register common providers with the global registry on module import."""
-    # Import providers here to avoid circular imports
-    try:
-        from publicdata_ca.providers.statcan import StatCanProvider
-        _global_registry.register('statcan', StatCanProvider)
-    except ImportError:
-        pass
+    # List of providers to auto-register: (name, module_path, class_name)
+    providers_to_register = [
+        ('statcan', 'publicdata_ca.providers.statcan', 'StatCanProvider'),
+        ('cmhc', 'publicdata_ca.providers.cmhc', 'CMHCProvider'),
+        ('open_canada', 'publicdata_ca.providers.open_canada', 'OpenCanadaProvider'),
+        ('ckan', 'publicdata_ca.providers.ckan', 'CKANProvider'),
+        ('socrata', 'publicdata_ca.providers.socrata', 'SocrataProvider'),
+        ('sdmx', 'publicdata_ca.providers.sdmx', 'SDMXProvider'),
+        ('valet', 'publicdata_ca.providers.boc_valet', 'ValetProvider'),
+        ('boc_valet', 'publicdata_ca.providers.boc_valet', 'ValetProvider'),  # Alias
+    ]
     
-    try:
-        from publicdata_ca.providers.cmhc import CMHCProvider
-        _global_registry.register('cmhc', CMHCProvider)
-    except ImportError:
-        pass
-    
-    try:
-        from publicdata_ca.providers.open_canada import OpenCanadaProvider
-        _global_registry.register('open_canada', OpenCanadaProvider)
-    except ImportError:
-        pass
-    
-    try:
-        from publicdata_ca.providers.ckan import CKANProvider
-        _global_registry.register('ckan', CKANProvider)
-    except ImportError:
-        pass
-    
-    try:
-        from publicdata_ca.providers.socrata import SocrataProvider
-        _global_registry.register('socrata', SocrataProvider)
-    except ImportError:
-        pass
-    
-    try:
-        from publicdata_ca.providers.sdmx import SDMXProvider
-        _global_registry.register('sdmx', SDMXProvider)
-    except ImportError:
-        pass
-    
-    try:
-        from publicdata_ca.providers.boc_valet import ValetProvider
-        _global_registry.register('valet', ValetProvider)
-        _global_registry.register('boc_valet', ValetProvider)  # Alias
-    except ImportError:
-        pass
+    for name, module_path, class_name in providers_to_register:
+        try:
+            # Dynamically import the provider module and class
+            module = __import__(module_path, fromlist=[class_name])
+            provider_class = getattr(module, class_name)
+            _global_registry.register(name, provider_class)
+        except ImportError:
+            # Silently skip if provider dependencies are not available
+            pass
 
 
 # Auto-register default providers on module import
