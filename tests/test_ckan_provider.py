@@ -133,7 +133,7 @@ class TestSearchCkanDatasets:
         """Test basic dataset search."""
         # Mock the response
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
         mock_retry.return_value = mock_response
         
         # Search datasets
@@ -153,7 +153,7 @@ class TestSearchCkanDatasets:
     def test_search_datasets_with_pagination(self, mock_retry):
         """Test dataset search with pagination."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
         mock_retry.return_value = mock_response
         
         results = search_ckan_datasets(
@@ -174,7 +174,7 @@ class TestSearchCkanDatasets:
     def test_search_datasets_failure(self, mock_retry):
         """Test search failure handling."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps({
+        mock_response.content = json.dumps({
             "success": False,
             "error": {"message": "Not found"}
         }).encode('utf-8')
@@ -208,7 +208,7 @@ class TestGetCkanPackage:
     def test_get_package_success(self, mock_retry):
         """Test getting a package successfully."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         package = get_ckan_package(
@@ -224,7 +224,7 @@ class TestGetCkanPackage:
     def test_get_package_not_found(self, mock_retry):
         """Test getting a non-existent package."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps({
+        mock_response.content = json.dumps({
             "success": False,
             "error": {"message": "Package not found"}
         }).encode('utf-8')
@@ -237,10 +237,32 @@ class TestGetCkanPackage:
             )
     
     @patch('publicdata_ca.providers.ckan.retry_request')
+    def test_get_package_404_error(self, mock_retry):
+        """Test getting a package that returns 404."""
+        from requests.exceptions import HTTPError
+        
+        # Create a mock response with 404 status
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.reason = 'NOT FOUND'
+        
+        # Create HTTPError with the response
+        http_error = HTTPError()
+        http_error.response = mock_response
+        
+        mock_retry.side_effect = http_error
+        
+        with pytest.raises(ValueError, match="Dataset 'nonexistent' not found"):
+            get_ckan_package(
+                'https://open.canada.ca/data',
+                'nonexistent'
+            )
+    
+    @patch('publicdata_ca.providers.ckan.retry_request')
     def test_get_package_invalid_json(self, mock_retry):
         """Test handling of invalid JSON response."""
         mock_response = Mock()
-        mock_response.read.return_value = b"Not valid JSON"
+        mock_response.content = b"Not valid JSON"
         mock_retry.return_value = mock_response
         
         with pytest.raises(RuntimeError, match="Failed to parse CKAN response"):

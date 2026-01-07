@@ -203,7 +203,7 @@ def resolve_cmhc_landing_page(
                 return cached_assets
     # Fetch the landing page
     response = retry_request(landing_url)
-    html_content = response.read().decode('utf-8', errors='ignore')
+    html_content = response.content.decode('utf-8', errors='ignore')
     
     # Parse base URL for resolving relative links
     parsed_url = urlparse(landing_url)
@@ -340,7 +340,7 @@ def extract_metadata_from_page(landing_url: str) -> Dict[str, str]:
             - description: Meta description or first paragraph
     """
     response = retry_request(landing_url)
-    html_content = response.read().decode('utf-8', errors='ignore')
+    html_content = response.content.decode('utf-8', errors='ignore')
     
     metadata = {}
     

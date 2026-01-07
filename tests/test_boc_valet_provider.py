@@ -60,7 +60,7 @@ class TestGetValetSeriesMetadata:
         """Test successful metadata retrieval."""
         # Mock the response
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_SERIES_METADATA_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_SERIES_METADATA_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         # Get metadata
@@ -80,7 +80,7 @@ class TestGetValetSeriesMetadata:
         """Test metadata retrieval when seriesDetail is not available."""
         # Mock response without seriesDetail
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps({"observations": []}).encode('utf-8')
+        mock_response.content = json.dumps({"observations": []}).encode('utf-8')
         mock_retry.return_value = mock_response
         
         metadata = get_valet_series_metadata('UNKNOWN')
@@ -110,7 +110,7 @@ class TestFetchValetSeries:
             "seriesDetail": SAMPLE_SERIES_METADATA_RESPONSE["seriesDetail"],
             "observations": SAMPLE_SIMPLE_OBSERVATIONS
         }
-        mock_response.read.return_value = json.dumps(response_data).encode('utf-8')
+        mock_response.content = json.dumps(response_data).encode('utf-8')
         mock_retry.return_value = mock_response
         
         # Fetch series
@@ -132,7 +132,7 @@ class TestFetchValetSeries:
             "seriesDetail": SAMPLE_SERIES_METADATA_RESPONSE["seriesDetail"],
             "observations": SAMPLE_SIMPLE_OBSERVATIONS
         }
-        mock_response.read.return_value = json.dumps(response_data).encode('utf-8')
+        mock_response.content = json.dumps(response_data).encode('utf-8')
         mock_retry.return_value = mock_response
         
         # Fetch with date range

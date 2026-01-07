@@ -9,7 +9,9 @@ import os
 import time
 from typing import Dict, Optional, Any
 import requests
+
 from requests.exceptions import RequestException, HTTPError as RequestsHTTPError
+
 
 
 def get_default_headers() -> Dict[str, str]:

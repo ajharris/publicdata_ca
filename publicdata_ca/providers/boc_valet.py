@@ -49,7 +49,7 @@ def get_valet_series_metadata(series_name: str) -> Dict[str, Any]:
     
     try:
         response = retry_request(url)
-        data = json.loads(response.read().decode('utf-8'))
+        data = json.loads(response.content.decode('utf-8'))
         
         # Valet API returns series info under 'seriesDetail' key
         if 'seriesDetail' in data and series_name in data['seriesDetail']:
@@ -114,7 +114,7 @@ def fetch_valet_series(
     
     try:
         response = retry_request(url)
-        data = json.loads(response.read().decode('utf-8'))
+        data = json.loads(response.content.decode('utf-8'))
         
         # Extract observations
         observations = data.get('observations', [])

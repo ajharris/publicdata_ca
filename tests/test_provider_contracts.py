@@ -81,7 +81,7 @@ class TestBOCValetProviderContract:
         fixture_data = load_fixture('boc_valet', 'FXUSDCAD_observations.json')
         
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(fixture_data).encode('utf-8')
+        mock_response.content = json.dumps(fixture_data).encode('utf-8')
         mock_retry.return_value = mock_response
         
         from publicdata_ca.providers.boc_valet import fetch_valet_series
@@ -138,7 +138,7 @@ class TestCKANProviderContract:
         fixture_data = load_fixture('ckan', 'search_response.json')
         
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(fixture_data).encode('utf-8')
+        mock_response.content = json.dumps(fixture_data).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = CKANProvider(base_url='https://example.com')
@@ -159,7 +159,7 @@ class TestCKANProviderContract:
         fixture_data = load_fixture('ckan', 'package_response.json')
         
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(fixture_data).encode('utf-8')
+        mock_response.content = json.dumps(fixture_data).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = CKANProvider(base_url='https://example.com')
@@ -191,7 +191,7 @@ class TestSDMXProviderContract:
         fixture_data = load_fixture('sdmx', 'dataflow_response.xml')
         
         mock_response = Mock()
-        mock_response.read.return_value = fixture_data.encode('utf-8')
+        mock_response.content = fixture_data.encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = SDMXProvider(base_url='https://example.org/rest')
@@ -212,7 +212,7 @@ class TestSDMXProviderContract:
         fixture_data = load_fixture('sdmx', 'data_response.xml')
         
         mock_response = Mock()
-        mock_response.read.return_value = fixture_data.encode('utf-8')
+        mock_response.content = fixture_data.encode('utf-8')
         mock_retry.return_value = mock_response
         
         from publicdata_ca.providers.sdmx import fetch_sdmx_data
@@ -237,7 +237,7 @@ class TestSDMXProviderContract:
         fixture_data = load_fixture('sdmx', 'data_response.json')
         
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(fixture_data).encode('utf-8')
+        mock_response.content = json.dumps(fixture_data).encode('utf-8')
         mock_retry.return_value = mock_response
         
         from publicdata_ca.providers.sdmx import fetch_sdmx_data
@@ -268,7 +268,7 @@ class TestSocrataProviderContract:
         fixture_data = load_fixture('socrata', 'search_response.json')
         
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(fixture_data).encode('utf-8')
+        mock_response.content = json.dumps(fixture_data).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = SocrataProvider(base_url='https://data.example.com')
@@ -287,7 +287,7 @@ class TestSocrataProviderContract:
         fixture_data = load_fixture('socrata', 'metadata_response.json')
         
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(fixture_data).encode('utf-8')
+        mock_response.content = json.dumps(fixture_data).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = SocrataProvider(base_url='https://data.example.com')
@@ -318,7 +318,7 @@ class TestOpenCanadaProviderContract:
         fixture_data = load_fixture('open_canada', 'search_response.json')
         
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(fixture_data).encode('utf-8')
+        mock_response.content = json.dumps(fixture_data).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = OpenCanadaProvider()
@@ -420,7 +420,7 @@ class TestCMHCProviderContract:
         fixture_html = load_fixture('cmhc', 'sample_landing_page.html')
         
         mock_response = Mock()
-        mock_response.read.return_value = fixture_html.encode('utf-8')
+        mock_response.content = fixture_html.encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = CMHCProvider()

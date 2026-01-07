@@ -35,8 +35,12 @@ from publicdata_ca.provider import DatasetRef
 provider = OpenCanadaProvider()
 results = provider.search('housing', rows=5)
 
+# Choose a dataset to download from the results returned
+target = results[0]  # Take the first search result
+print(f"Downloading dataset: {target.id} - {target.metadata['title']}")
+
 # Download CSV resources from a dataset
-ref = DatasetRef(provider='open_canada', id='dataset-id', params={'format': 'CSV'})
+ref = DatasetRef(provider='open_canada', id=target.id, params={'format': 'CSV'})
 provider.fetch(ref, './data/open_canada')
 ```
 
@@ -49,8 +53,11 @@ from publicdata_ca.provider import DatasetRef
 provider = CKANProvider(base_url='https://catalog.data.gov')
 results = provider.search('housing', rows=5)
 
+# Choose a dataset to download from the results returned
+print(f"Downloading dataset: {results[0].id} - {results[0].metadata['title']}")
+
 # Download CSV resources from a dataset
-ref = DatasetRef(provider='ckan', id='dataset-id', params={'format': 'CSV'})
+ref = DatasetRef(provider='ckan', id=results[0].id, params={'format': 'CSV'})
 provider.fetch(ref, './data/ckan')
 ```
 

@@ -83,7 +83,7 @@ def get_sdmx_dataflow(
     
     try:
         response = retry_request(api_url)
-        content = response.read().decode('utf-8')
+        content = response.content.decode('utf-8')
         
         # Parse XML response
         root = ET.fromstring(content)
@@ -187,7 +187,7 @@ def get_sdmx_data_structure(
     
     try:
         response = retry_request(api_url)
-        content = response.read().decode('utf-8')
+        content = response.content.decode('utf-8')
         
         # Parse XML response
         root = ET.fromstring(content)
@@ -365,7 +365,7 @@ def fetch_sdmx_data(
     
     try:
         response = retry_request(api_url)
-        content = response.read().decode('utf-8')
+        content = response.content.decode('utf-8')
         
         # Parse based on format
         if format == 'sdmx-json':
