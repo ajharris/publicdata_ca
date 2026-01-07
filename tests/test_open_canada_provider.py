@@ -94,7 +94,7 @@ class TestOpenCanadaProvider:
         """Test Open Canada provider search."""
         # Mock the response
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = OpenCanadaProvider()
@@ -115,7 +115,7 @@ class TestOpenCanadaProvider:
     def test_open_canada_provider_search_with_pagination(self, mock_retry):
         """Test search with pagination parameters."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = OpenCanadaProvider()
@@ -133,7 +133,7 @@ class TestOpenCanadaProvider:
     def test_open_canada_provider_resolve(self, mock_retry):
         """Test Open Canada provider resolve."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = OpenCanadaProvider()
@@ -154,7 +154,7 @@ class TestOpenCanadaProvider:
     def test_open_canada_provider_resolve_with_format_filter(self, mock_retry):
         """Test resolve with format filter."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = OpenCanadaProvider()
@@ -175,7 +175,7 @@ class TestOpenCanadaProvider:
         """Test Open Canada provider fetch."""
         # Mock package response
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         # Mock download
@@ -202,7 +202,7 @@ class TestOpenCanadaProvider:
         """Test fetching all resources without format filter."""
         # Mock package response
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         # Mock downloads
@@ -263,7 +263,7 @@ class TestOpenCanadaProvider:
     def test_open_canada_provider_extracts_formats(self, mock_retry):
         """Test that formats are properly extracted to metadata."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = OpenCanadaProvider()
@@ -289,7 +289,7 @@ class TestOpenCanadaProviderIntegration:
         
         # Step 1: Search for datasets
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_SEARCH_RESPONSE_RAW).encode('utf-8')
         mock_retry.return_value = mock_response
         
         provider = OpenCanadaProvider()
@@ -306,7 +306,7 @@ class TestOpenCanadaProviderIntegration:
         )
         
         # Step 3: Resolve to see what's available
-        mock_response.read.return_value = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
         metadata = provider.resolve(ref)
         
         assert 'resources' in metadata

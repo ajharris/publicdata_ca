@@ -16,7 +16,7 @@ import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 from urllib.parse import urljoin, quote
-from urllib.error import HTTPError
+from requests.exceptions import HTTPError
 from publicdata_ca.http import retry_request, download_file
 from publicdata_ca.provider import Provider, DatasetRef
 
@@ -81,7 +81,7 @@ def search_ckan_datasets(
     
     try:
         response = retry_request(full_url)
-        data = json.loads(response.read().decode('utf-8'))
+        data = json.loads(response.content.decode('utf-8'))
         
         if data.get('success'):
             return {
@@ -97,13 +97,13 @@ def search_ckan_datasets(
                 'error': data.get('error', {})
             }
     except HTTPError as e:
-        if e.code == 404:
+        if e.response.status_code == 404:
             raise ValueError(
                 f"CKAN portal not found at {base_url}.\n"
                 f"Please verify the portal URL is correct."
             ) from e
         else:
-            raise RuntimeError(f"HTTP error {e.code} when searching CKAN portal at {base_url}: {e.msg}") from e
+            raise RuntimeError(f"HTTP error {e.response.status_code} when searching CKAN portal at {base_url}: {e.response.reason}") from e
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Failed to parse CKAN search response: {str(e)}") from e
     except Exception as e:
@@ -151,7 +151,7 @@ def get_ckan_package(base_url: str, package_id: str) -> Dict[str, Any]:
     
     try:
         response = retry_request(full_url)
-        data = json.loads(response.read().decode('utf-8'))
+        data = json.loads(response.content.decode('utf-8'))
         
         if data.get('success'):
             return data['result']
@@ -159,7 +159,7 @@ def get_ckan_package(base_url: str, package_id: str) -> Dict[str, Any]:
             error_msg = data.get('error', {}).get('message', 'Unknown error')
             raise RuntimeError(f"CKAN API error: {error_msg}")
     except HTTPError as e:
-        if e.code == 404:
+        if e.response.status_code == 404:
             raise ValueError(
                 f"Dataset '{package_id}' not found in the CKAN portal at {base_url}.\n"
                 f"Please verify:\n"
@@ -168,7 +168,7 @@ def get_ckan_package(base_url: str, package_id: str) -> Dict[str, Any]:
                 f"  3. You can browse datasets at: {base_url.replace('/data', '/en/open-data') if 'open.canada.ca' in base_url else base_url}"
             ) from e
         else:
-            raise RuntimeError(f"HTTP error {e.code} when accessing CKAN package {package_id}: {e.msg}") from e
+            raise RuntimeError(f"HTTP error {e.response.status_code} when accessing CKAN package {package_id}: {e.response.reason}") from e
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Failed to parse CKAN response: {str(e)}") from e
     except Exception as e:

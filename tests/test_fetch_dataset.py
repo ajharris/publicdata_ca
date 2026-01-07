@@ -35,7 +35,7 @@ class TestFetchDataset:
         """Test fetch_dataset with Open Canada provider."""
         # Mock API response
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         # Mock file download - return value doesn't matter, just needs to not raise
@@ -89,7 +89,7 @@ class TestFetchDataset:
         """Test fetch_dataset passes kwargs to provider."""
         # Mock API response
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_PACKAGE_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         # Mock file download

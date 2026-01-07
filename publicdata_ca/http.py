@@ -8,8 +8,8 @@ appropriate headers for accessing Canadian public data sources.
 import os
 import time
 from typing import Dict, Optional, Any
-from urllib import request
-from urllib.error import URLError, HTTPError
+import requests
+from requests.exceptions import RequestException, HTTPError, Timeout
 
 
 def get_default_headers() -> Dict[str, str]:
@@ -32,7 +32,7 @@ def retry_request(
     retry_delay: float = 1.0,
     headers: Optional[Dict[str, str]] = None,
     timeout: int = 30
-) -> Any:
+) -> requests.Response:
     """
     Make an HTTP GET request with retry logic.
     
@@ -48,15 +48,15 @@ def retry_request(
         timeout: Request timeout in seconds (default: 30).
     
     Returns:
-        Response object from urllib.request.urlopen.
+        Response object from requests library.
     
     Raises:
-        URLError: If all retry attempts fail.
+        RequestException: If all retry attempts fail.
         HTTPError: If the server returns an HTTP error code after all retries.
     
     Example:
         >>> response = retry_request('https://www150.statcan.gc.ca/data.csv')
-        >>> data = response.read()
+        >>> data = response.content
     """
     if headers is None:
         headers = get_default_headers()
@@ -66,17 +66,17 @@ def retry_request(
     
     for attempt in range(max_retries):
         try:
-            req = request.Request(url, headers=headers)
-            response = request.urlopen(req, timeout=timeout)
+            response = requests.get(url, headers=headers, timeout=timeout, stream=True)
+            response.raise_for_status()
             return response
         
         except HTTPError as e:
             # Don't retry on client errors (4xx), only on server errors (5xx) and specific codes
-            if 400 <= e.code < 500 and e.code not in [429, 408]:
+            if 400 <= e.response.status_code < 500 and e.response.status_code not in [429, 408]:
                 raise
             last_error = e
             
-        except URLError as e:
+        except (RequestException, Timeout) as e:
             last_error = e
         
         # If this wasn't the last attempt, wait before retrying
@@ -88,7 +88,7 @@ def retry_request(
     if last_error:
         raise last_error
     else:
-        raise URLError(f"Failed to fetch {url} after {max_retries} attempts")
+        raise RequestException(f"Failed to fetch {url} after {max_retries} attempts")
 
 
 def download_file(
@@ -131,7 +131,7 @@ def download_file(
         Path to the downloaded file.
     
     Raises:
-        URLError: If download fails after all retries.
+        RequestException: If download fails after all retries.
         HTTPError: If the server returns an HTTP error code (except 304 with caching enabled).
         ValueError: If validate_content_type=True and HTML content is detected.
     
@@ -162,7 +162,7 @@ def download_file(
         response = retry_request(url, max_retries=max_retries, headers=request_headers)
     except HTTPError as e:
         # Handle 304 Not Modified - file hasn't changed
-        if e.code == 304 and use_cache and os.path.exists(output_path):
+        if e.response.status_code == 304 and use_cache and os.path.exists(output_path):
             # File is still valid, no need to download
             return output_path
         # Re-raise other HTTP errors
@@ -182,11 +182,9 @@ def download_file(
             )
     
     with open(output_path, 'wb') as f:
-        while True:
-            chunk = response.read(chunk_size)
-            if not chunk:
-                break
-            f.write(chunk)
+        for chunk in response.iter_content(chunk_size=chunk_size):
+            if chunk:  # filter out keep-alive new chunks
+                f.write(chunk)
     
     # Save HTTP cache metadata if caching is enabled
     if use_cache:
