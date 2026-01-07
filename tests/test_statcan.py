@@ -435,6 +435,6 @@ def test_download_statcan_table_sets_correct_accept_header():
         # Verify that headers were passed and contain correct Accept header
         assert received_headers is not None, "Headers should be passed to download_file"
         assert 'Accept' in received_headers, "Accept header should be present"
-        assert received_headers['Accept'] == 'application/zip', \
-            "Accept header should be 'application/zip' to avoid HTTP 406 error"
+        assert received_headers['Accept'] == 'application/octet-stream', \
+            "Accept header should be 'application/octet-stream' to avoid HTTP 406 error"
         assert 'User-Agent' in received_headers, "User-Agent header should be present"
