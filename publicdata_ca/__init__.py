@@ -41,10 +41,16 @@ from publicdata_ca.provider import (
     DatasetRef,
     ProviderRegistry,
     get_registry,
+    fetch_dataset,
 )
 from publicdata_ca.providers import (
     StatCanProvider,
     CMHCProvider,
+    OpenCanadaProvider,
+    CKANProvider,
+    SocrataProvider,
+    SDMXProvider,
+    ValetProvider,
 )
 from publicdata_ca.profiles import (
     Profile,
@@ -74,8 +80,14 @@ __all__ = [
     "DatasetRef",
     "ProviderRegistry",
     "get_registry",
+    "fetch_dataset",
     "StatCanProvider",
     "CMHCProvider",
+    "OpenCanadaProvider",
+    "CKANProvider",
+    "SocrataProvider",
+    "SDMXProvider",
+    "ValetProvider",
     "Profile",
     "ProfileDataset",
     "ProfileSearch",

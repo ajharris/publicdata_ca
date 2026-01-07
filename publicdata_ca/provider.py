@@ -271,6 +271,57 @@ class ProviderRegistry:
 _global_registry = ProviderRegistry()
 
 
+def _register_default_providers() -> None:
+    """Register common providers with the global registry on module import."""
+    # Import providers here to avoid circular imports
+    try:
+        from publicdata_ca.providers.statcan import StatCanProvider
+        _global_registry.register('statcan', StatCanProvider)
+    except ImportError:
+        pass
+    
+    try:
+        from publicdata_ca.providers.cmhc import CMHCProvider
+        _global_registry.register('cmhc', CMHCProvider)
+    except ImportError:
+        pass
+    
+    try:
+        from publicdata_ca.providers.open_canada import OpenCanadaProvider
+        _global_registry.register('open_canada', OpenCanadaProvider)
+    except ImportError:
+        pass
+    
+    try:
+        from publicdata_ca.providers.ckan import CKANProvider
+        _global_registry.register('ckan', CKANProvider)
+    except ImportError:
+        pass
+    
+    try:
+        from publicdata_ca.providers.socrata import SocrataProvider
+        _global_registry.register('socrata', SocrataProvider)
+    except ImportError:
+        pass
+    
+    try:
+        from publicdata_ca.providers.sdmx import SDMXProvider
+        _global_registry.register('sdmx', SDMXProvider)
+    except ImportError:
+        pass
+    
+    try:
+        from publicdata_ca.providers.boc_valet import ValetProvider
+        _global_registry.register('valet', ValetProvider)
+        _global_registry.register('boc_valet', ValetProvider)  # Alias
+    except ImportError:
+        pass
+
+
+# Auto-register default providers on module import
+_register_default_providers()
+
+
 def get_registry() -> ProviderRegistry:
     """
     Get the global provider registry instance.
@@ -289,9 +340,68 @@ def get_registry() -> ProviderRegistry:
     return _global_registry
 
 
+def fetch_dataset(
+    ref: DatasetRef,
+    output_dir: str,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Convenience function to fetch a dataset using its DatasetRef.
+    
+    This function automatically resolves the provider from the DatasetRef's
+    provider field and calls the appropriate provider's fetch() method.
+    Providers must be registered with the global registry.
+    
+    Args:
+        ref: Dataset reference with provider namespace and dataset ID
+        output_dir: Directory where files will be saved
+        **kwargs: Additional parameters passed to provider's fetch() method
+    
+    Returns:
+        Dictionary containing download results (structure depends on provider)
+        Typically includes:
+            - dataset_id: Dataset identifier
+            - provider: Provider name
+            - files: List of downloaded file paths
+            - Additional provider-specific metadata
+    
+    Raises:
+        KeyError: If the provider specified in ref is not registered
+        ValueError: If the dataset reference is invalid
+        RuntimeError: If the dataset cannot be fetched
+    
+    Example:
+        >>> from publicdata_ca import DatasetRef, fetch_dataset
+        >>> 
+        >>> # Fetch from Open Canada
+        >>> ref = DatasetRef(
+        ...     provider='open_canada',
+        ...     id='housing-data',
+        ...     params={'format': 'CSV'}
+        ... )
+        >>> result = fetch_dataset(ref, './data')
+        >>> print(f"Downloaded {len(result['files'])} files")
+        
+        >>> # Fetch from StatsCan
+        >>> ref = DatasetRef(provider='statcan', id='18100004')
+        >>> result = fetch_dataset(ref, './data')
+    
+    Notes:
+        - The provider must be registered with the global registry
+        - Common providers (statcan, cmhc, open_canada, etc.) are auto-registered
+        - For custom providers, use get_registry().register() first
+    """
+    # Get the provider from the global registry
+    provider = _global_registry.get_provider(ref.provider)
+    
+    # Call the provider's fetch method
+    return provider.fetch(ref, output_dir, **kwargs)
+
+
 __all__ = [
     'Provider',
     'DatasetRef',
     'ProviderRegistry',
     'get_registry',
+    'fetch_dataset',
 ]
