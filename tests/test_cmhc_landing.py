@@ -3,7 +3,7 @@ Tests for CMHC landing page resolver module.
 """
 
 from unittest.mock import Mock, patch
-from urllib.error import URLError
+from requests.exceptions import RequestException
 
 import pytest
 
@@ -162,7 +162,7 @@ def test_check_content_type_handles_empty_header():
 
 def test_check_content_type_handles_request_failure():
     """Test that request failures don't reject URLs."""
-    with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', side_effect=URLError('Failed')):
+    with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', side_effect=RequestException('Failed')):
         is_valid, content_type = _check_content_type('https://example.com/data.csv')
         
         # Should assume valid if we can't check
