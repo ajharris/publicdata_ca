@@ -108,7 +108,7 @@ class TestSearchSocrataDatasets:
         """Test basic dataset search."""
         # Mock the response
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_CATALOG_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_CATALOG_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         # Search datasets
@@ -127,7 +127,7 @@ class TestSearchSocrataDatasets:
     def test_search_datasets_with_pagination(self, mock_retry):
         """Test dataset search with pagination."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_CATALOG_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_CATALOG_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         results = search_socrata_datasets(
@@ -148,7 +148,7 @@ class TestSearchSocrataDatasets:
     def test_search_datasets_empty_query(self, mock_retry):
         """Test search with empty query returns all datasets."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_CATALOG_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_CATALOG_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         results = search_socrata_datasets(
@@ -184,7 +184,7 @@ class TestGetSocrataMetadata:
     def test_get_metadata_success(self, mock_retry):
         """Test getting metadata successfully."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_METADATA_RESPONSE).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_METADATA_RESPONSE).encode('utf-8')
         mock_retry.return_value = mock_response
         
         metadata = get_socrata_metadata(
@@ -201,7 +201,7 @@ class TestGetSocrataMetadata:
     def test_get_metadata_invalid_json(self, mock_retry):
         """Test handling of invalid JSON response."""
         mock_response = Mock()
-        mock_response.read.return_value = b"Not valid JSON"
+        mock_response.content = b"Not valid JSON"
         mock_retry.return_value = mock_response
         
         with pytest.raises(RuntimeError, match="Failed to parse Socrata metadata response"):

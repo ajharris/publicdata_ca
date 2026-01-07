@@ -28,7 +28,7 @@ def test_download_cmhc_asset_validates_content_type():
         # Mock landing page with one CSV asset
         html_content = '<html><body><a href="data.csv">Data File</a></body></html>'
         mock_landing_response = Mock()
-        mock_landing_response.read.return_value = html_content.encode('utf-8')
+        mock_landing_response.content = html_content.encode('utf-8')
         mock_landing_response.headers = {}
         
         # Mock the download response as HTML (invalid)
@@ -74,7 +74,7 @@ def test_download_cmhc_asset_successful_download():
         # Mock landing page with one CSV asset
         html_content = '<html><body><a href="data.csv">Data File</a></body></html>'
         mock_landing_response = Mock()
-        mock_landing_response.read.return_value = html_content.encode('utf-8')
+        mock_landing_response.content = html_content.encode('utf-8')
         mock_landing_response.headers = {}
         
         # Mock the download response as valid CSV
@@ -128,7 +128,7 @@ def test_download_cmhc_asset_mixed_success_and_failure():
         </body></html>
         '''
         mock_landing_response = Mock()
-        mock_landing_response.read.return_value = html_content.encode('utf-8')
+        mock_landing_response.content = html_content.encode('utf-8')
         mock_landing_response.headers = {}
         
         # Mock responses for each asset
@@ -139,7 +139,7 @@ def test_download_cmhc_asset_mixed_success_and_failure():
                 # Valid CSV
                 mock_response = Mock()
                 mock_response.headers = {'Content-Type': 'text/csv'}
-                mock_response.read.side_effect = [test_csv_data, b'']
+                mock_response.iter_content = Mock(return_value=iter([test_csv_data]))
                 return mock_response
             elif 'bad.csv' in url:
                 # HTML response (invalid)
@@ -186,7 +186,7 @@ def test_download_cmhc_asset_with_filter():
         </body></html>
         '''
         mock_landing_response = Mock()
-        mock_landing_response.read.return_value = html_content.encode('utf-8')
+        mock_landing_response.content = html_content.encode('utf-8')
         mock_landing_response.headers = {}
         
         test_csv_data = b'col1,col2\nval1,val2\n'
@@ -195,7 +195,7 @@ def test_download_cmhc_asset_with_filter():
             if 'data.csv' in url:
                 mock_response = Mock()
                 mock_response.headers = {'Content-Type': 'text/csv'}
-                mock_response.read.side_effect = [test_csv_data, b'']
+                mock_response.iter_content = Mock(return_value=iter([test_csv_data]))
                 return mock_response
             else:
                 return mock_landing_response
@@ -224,7 +224,7 @@ def test_resolve_cmhc_assets_returns_list():
     </body></html>
     '''
     mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response.content = html_content.encode('utf-8')
     mock_response.headers = {}
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response), \

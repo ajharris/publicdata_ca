@@ -84,7 +84,7 @@ def search_socrata_datasets(
     
     try:
         response = retry_request(full_url)
-        data = json.loads(response.read().decode('utf-8'))
+        data = json.loads(response.content.decode('utf-8'))
         
         # Socrata catalog API returns results directly
         results = data.get('results', [])
@@ -136,7 +136,7 @@ def get_socrata_metadata(base_url: str, dataset_id: str) -> Dict[str, Any]:
     
     try:
         response = retry_request(api_url)
-        data = json.loads(response.read().decode('utf-8'))
+        data = json.loads(response.content.decode('utf-8'))
         return data
     except json.JSONDecodeError as e:
         raise RuntimeError(f"Failed to parse Socrata metadata response: {str(e)}")

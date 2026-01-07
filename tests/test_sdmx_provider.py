@@ -116,7 +116,7 @@ class TestGetSdmxDataflow:
     def test_get_dataflow_success(self):
         """Test successfully retrieving dataflow metadata."""
         mock_response = Mock()
-        mock_response.read.return_value = SAMPLE_DATAFLOW_XML.encode('utf-8')
+        mock_response.content = SAMPLE_DATAFLOW_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response):
             metadata = get_sdmx_dataflow(
@@ -136,7 +136,7 @@ class TestGetSdmxDataflow:
     def test_get_dataflow_with_version(self):
         """Test retrieving dataflow with specific version."""
         mock_response = Mock()
-        mock_response.read.return_value = SAMPLE_DATAFLOW_XML.encode('utf-8')
+        mock_response.content = SAMPLE_DATAFLOW_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response) as mock_req:
             metadata = get_sdmx_dataflow(
@@ -164,7 +164,7 @@ class TestGetSdmxDataflow:
     def test_get_dataflow_invalid_xml(self):
         """Test handling of invalid XML response."""
         mock_response = Mock()
-        mock_response.read.return_value = b"<invalid>XML"
+        mock_response.content = b"<invalid>XML"
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response):
             with pytest.raises(RuntimeError, match="Failed to parse SDMX XML"):
@@ -177,7 +177,7 @@ class TestGetSdmxDataflow:
     def test_get_dataflow_no_dataflow_element(self):
         """Test handling of response without dataflow element."""
         mock_response = Mock()
-        mock_response.read.return_value = b"<root></root>"
+        mock_response.content = b"<root></root>"
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response):
             with pytest.raises(RuntimeError, match="No dataflow found"):
@@ -194,7 +194,7 @@ class TestGetSdmxDataStructure:
     def test_get_data_structure_success(self):
         """Test successfully retrieving data structure definition."""
         mock_response = Mock()
-        mock_response.read.return_value = SAMPLE_DSD_XML.encode('utf-8')
+        mock_response.content = SAMPLE_DSD_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response):
             metadata = get_sdmx_data_structure(
@@ -224,7 +224,7 @@ class TestGetSdmxDataStructure:
     def test_get_data_structure_with_version(self):
         """Test retrieving data structure with specific version."""
         mock_response = Mock()
-        mock_response.read.return_value = SAMPLE_DSD_XML.encode('utf-8')
+        mock_response.content = SAMPLE_DSD_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response) as mock_req:
             metadata = get_sdmx_data_structure(
@@ -256,7 +256,7 @@ class TestFetchSdmxData:
     def test_fetch_data_xml_format(self):
         """Test fetching data in SDMX-ML (XML) format."""
         mock_response = Mock()
-        mock_response.read.return_value = SAMPLE_SDMX_DATA_XML.encode('utf-8')
+        mock_response.content = SAMPLE_SDMX_DATA_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response):
             result = fetch_sdmx_data(
@@ -275,7 +275,7 @@ class TestFetchSdmxData:
     def test_fetch_data_json_format(self):
         """Test fetching data in SDMX-JSON format."""
         mock_response = Mock()
-        mock_response.read.return_value = json.dumps(SAMPLE_SDMX_JSON).encode('utf-8')
+        mock_response.content = json.dumps(SAMPLE_SDMX_JSON).encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response):
             result = fetch_sdmx_data(
@@ -292,7 +292,7 @@ class TestFetchSdmxData:
     def test_fetch_data_with_time_filter(self):
         """Test fetching data with start and end period filters."""
         mock_response = Mock()
-        mock_response.read.return_value = SAMPLE_SDMX_DATA_XML.encode('utf-8')
+        mock_response.content = SAMPLE_SDMX_DATA_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response) as mock_req:
             result = fetch_sdmx_data(
@@ -311,7 +311,7 @@ class TestFetchSdmxData:
     def test_fetch_data_simple_dataflow_id(self):
         """Test fetching data with simple dataflow ID (no agency/version)."""
         mock_response = Mock()
-        mock_response.read.return_value = SAMPLE_SDMX_DATA_XML.encode('utf-8')
+        mock_response.content = SAMPLE_SDMX_DATA_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response) as mock_req:
             result = fetch_sdmx_data(
@@ -327,7 +327,7 @@ class TestFetchSdmxData:
     def test_fetch_data_with_additional_params(self):
         """Test fetching data with additional SDMX parameters."""
         mock_response = Mock()
-        mock_response.read.return_value = SAMPLE_SDMX_DATA_XML.encode('utf-8')
+        mock_response.content = SAMPLE_SDMX_DATA_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response) as mock_req:
             result = fetch_sdmx_data(
@@ -455,7 +455,7 @@ class TestSDMXProvider:
         provider = SDMXProvider(base_url='https://sdmx.example.org/rest')
         
         mock_response = Mock()
-        mock_response.read.return_value = SAMPLE_DATAFLOW_XML.encode('utf-8')
+        mock_response.content = SAMPLE_DATAFLOW_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response):
             ref = DatasetRef(
@@ -475,7 +475,7 @@ class TestSDMXProvider:
         provider = SDMXProvider(base_url='https://sdmx.example.org/rest')
         
         mock_response = Mock()
-        mock_response.read.return_value = SAMPLE_DATAFLOW_XML.encode('utf-8')
+        mock_response.content = SAMPLE_DATAFLOW_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', return_value=mock_response):
             ref = DatasetRef(
@@ -494,10 +494,10 @@ class TestSDMXProvider:
         provider = SDMXProvider(base_url='https://sdmx.example.org/rest')
         
         mock_dataflow = Mock()
-        mock_dataflow.read.return_value = SAMPLE_DATAFLOW_XML.encode('utf-8')
+        mock_dataflow.content = SAMPLE_DATAFLOW_XML.encode('utf-8')
         
         mock_dsd = Mock()
-        mock_dsd.read.return_value = SAMPLE_DSD_XML.encode('utf-8')
+        mock_dsd.content = SAMPLE_DSD_XML.encode('utf-8')
         
         with patch('publicdata_ca.providers.sdmx.retry_request', side_effect=[mock_dataflow, mock_dsd]):
             ref = DatasetRef(
