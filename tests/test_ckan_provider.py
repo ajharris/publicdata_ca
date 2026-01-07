@@ -237,6 +237,25 @@ class TestGetCkanPackage:
             )
     
     @patch('publicdata_ca.providers.ckan.retry_request')
+    def test_get_package_404_error(self, mock_retry):
+        """Test getting a package that returns 404."""
+        from urllib.error import HTTPError
+        
+        mock_retry.side_effect = HTTPError(
+            url='https://open.canada.ca/data/api/3/action/package_show?id=nonexistent',
+            code=404,
+            msg='NOT FOUND',
+            hdrs={},
+            fp=None
+        )
+        
+        with pytest.raises(ValueError, match="Dataset 'nonexistent' not found"):
+            get_ckan_package(
+                'https://open.canada.ca/data',
+                'nonexistent'
+            )
+    
+    @patch('publicdata_ca.providers.ckan.retry_request')
     def test_get_package_invalid_json(self, mock_retry):
         """Test handling of invalid JSON response."""
         mock_response = Mock()
