@@ -5,7 +5,8 @@ Tests for HTTP utilities module.
 import os
 import tempfile
 from unittest.mock import Mock, patch, MagicMock
-from requests.exceptions import RequestException, HTTPError, Timeout
+from requests.exceptions import RequestException, HTTPError as RequestsHTTPError
+import requests
 
 import pytest
 
@@ -30,7 +31,7 @@ def test_retry_request_success_on_first_try():
     """Test successful request on first attempt."""
     mock_response = Mock()
     mock_response.content = b'test data'
-    mock_response.raise_for_status = Mock()
+    mock_response.status_code = 200
     
     with patch('publicdata_ca.http.requests.get', return_value=mock_response) as mock_get:
         response = retry_request('https://example.com/data.csv')
@@ -42,7 +43,7 @@ def test_retry_request_success_on_first_try():
 def test_retry_request_with_custom_headers():
     """Test that custom headers are used in requests."""
     mock_response = Mock()
-    mock_response.raise_for_status = Mock()
+    mock_response.status_code = 200
     custom_headers = {'Authorization': 'Bearer token123'}
     
     with patch('publicdata_ca.http.requests.get', return_value=mock_response) as mock_get:
@@ -50,15 +51,15 @@ def test_retry_request_with_custom_headers():
         
         # Verify get was called with custom headers
         mock_get.assert_called_once()
-        call_kwargs = mock_get.call_args[1]
-        assert call_kwargs['headers'] == custom_headers
+        call_args = mock_get.call_args
+        assert call_args[1]['headers'] == custom_headers
 
 
 def test_retry_request_succeeds_after_retries():
     """Test that request succeeds after transient failures."""
     mock_response = Mock()
     mock_response.content = b'test data'
-    mock_response.raise_for_status = Mock()
+    mock_response.status_code = 200
     
     # Fail twice, then succeed
     with patch('publicdata_ca.http.requests.get') as mock_get, \
@@ -96,11 +97,11 @@ def test_retry_request_does_not_retry_4xx_errors():
         # 404 should not be retried
         mock_response = Mock()
         mock_response.status_code = 404
-        http_error = HTTPError()
-        http_error.response = mock_response
-        mock_get.side_effect = http_error
+        error = requests.HTTPError("404 Client Error")
+        error.response = mock_response
+        mock_get.side_effect = error
         
-        with pytest.raises(HTTPError):
+        with pytest.raises(requests.HTTPError):
             retry_request('https://example.com/data.csv', max_retries=3)
         
         # Should only try once, no retries
@@ -109,45 +110,43 @@ def test_retry_request_does_not_retry_4xx_errors():
 
 def test_retry_request_retries_5xx_errors():
     """Test that 5xx server errors are retried."""
-    mock_response = Mock()
-    mock_response.raise_for_status = Mock()
+    mock_success = Mock()
+    mock_success.status_code = 200
     
     with patch('publicdata_ca.http.requests.get') as mock_get, \
          patch('publicdata_ca.http.time.sleep'):
         
         # Fail with 500, then succeed
-        error_response = Mock()
-        error_response.status_code = 500
-        http_error = HTTPError()
-        http_error.response = error_response
-        
-        mock_get.side_effect = [http_error, mock_response]
+        mock_error = Mock()
+        mock_error.status_code = 500
+        error = requests.HTTPError("500 Server Error")
+        error.response = mock_error
+        mock_get.side_effect = [error, mock_success]
         
         response = retry_request('https://example.com/data.csv', max_retries=3, retry_delay=0.1)
         
-        assert response == mock_response
+        assert response == mock_success
         assert mock_get.call_count == 2
 
 
 def test_retry_request_retries_429_rate_limit():
     """Test that 429 rate limit errors are retried."""
-    mock_response = Mock()
-    mock_response.raise_for_status = Mock()
+    mock_success = Mock()
+    mock_success.status_code = 200
     
     with patch('publicdata_ca.http.requests.get') as mock_get, \
          patch('publicdata_ca.http.time.sleep'):
         
         # Fail with 429, then succeed
-        error_response = Mock()
-        error_response.status_code = 429
-        http_error = HTTPError()
-        http_error.response = error_response
-        
-        mock_get.side_effect = [http_error, mock_response]
+        mock_error = Mock()
+        mock_error.status_code = 429
+        error = requests.HTTPError("429 Too Many Requests")
+        error.response = mock_error
+        mock_get.side_effect = [error, mock_success]
         
         response = retry_request('https://example.com/data.csv', max_retries=3, retry_delay=0.1)
         
-        assert response == mock_response
+        assert response == mock_success
         assert mock_get.call_count == 2
 
 
@@ -187,9 +186,7 @@ def test_download_file_streaming_with_chunks():
         # Simulate reading in chunks
         chunk_size = 8192
         chunks = [test_data[i:i+chunk_size] for i in range(0, len(test_data), chunk_size)]
-        # Filter out empty chunks as requests does
-        chunks = [c for c in chunks if c]
-        mock_response.iter_content = Mock(return_value=iter(chunks))
+        mock_response.iter_content = Mock(return_value=chunks)
         
         with patch('publicdata_ca.http.retry_request', return_value=mock_response):
             download_file('https://example.com/large.dat', output_path, chunk_size=chunk_size, write_metadata=False)
@@ -214,9 +211,7 @@ def test_download_file_with_custom_chunk_size():
         mock_response.headers = {'Content-Type': 'application/octet-stream'}
         chunks = [test_data[i:i+custom_chunk_size] 
                   for i in range(0, len(test_data), custom_chunk_size)]
-        # Filter out empty chunks
-        chunks = [c for c in chunks if c]
-        mock_response.iter_content = Mock(return_value=iter(chunks))
+        mock_response.iter_content = Mock(return_value=chunks)
         
         with patch('publicdata_ca.http.retry_request', return_value=mock_response):
             download_file('https://example.com/data.dat', output_path, chunk_size=custom_chunk_size, write_metadata=False)
@@ -225,7 +220,7 @@ def test_download_file_with_custom_chunk_size():
                 assert f.read() == test_data
             
             # Verify iter_content was called with custom chunk size
-            mock_response.iter_content.assert_called_once_with(chunk_size=custom_chunk_size)
+            mock_response.iter_content.assert_called_with(chunk_size=custom_chunk_size)
 
 
 def test_download_file_respects_max_retries():
@@ -267,14 +262,14 @@ def test_download_file_respects_custom_headers():
 def test_retry_request_timeout_parameter():
     """Test that timeout parameter is used in requests."""
     mock_response = Mock()
-    mock_response.raise_for_status = Mock()
+    mock_response.status_code = 200
     
     with patch('publicdata_ca.http.requests.get', return_value=mock_response) as mock_get:
         retry_request('https://example.com/data.csv', timeout=60)
         
         # Verify get was called with timeout
-        call_kwargs = mock_get.call_args[1]
-        assert call_kwargs['timeout'] == 60
+        call_args = mock_get.call_args
+        assert call_args[1]['timeout'] == 60
 
 
 def test_exponential_backoff_timing():
@@ -533,9 +528,9 @@ def test_download_file_revalidation_304_not_modified():
             # Raise HTTPError with 304 status
             mock_response = Mock()
             mock_response.status_code = 304
-            http_error = HTTPError()
-            http_error.response = mock_response
-            raise http_error
+            error = requests.HTTPError("304 Not Modified")
+            error.response = mock_response
+            raise error
         
         with patch('publicdata_ca.http.retry_request', side_effect=mock_retry_with_304):
             result = download_file('https://example.com/data.csv', output_path, write_metadata=False, use_cache=True)

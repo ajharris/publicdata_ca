@@ -2,12 +2,13 @@
 Tests for Statistics Canada (StatsCan) provider module.
 """
 
+import copy
 import json
 import os
 import tempfile
 import zipfile
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, ANY
 
 import pytest
 
@@ -18,6 +19,31 @@ from publicdata_ca.providers.statcan import (
     _extract_zip,
     _parse_manifest
 )
+
+
+@pytest.fixture
+def mock_wds_manifest():
+    """Provide a default mocked WDS manifest response for download tests."""
+    default_payload = {
+        'manifest_url': 'https://www150.statcan.gc.ca/t1/wds/rest/getFullTableDownloadCSV/18100004/en',
+        'download_link': 'https://proxy-appli.statscan.gc.ca/wds/csv/18100004-en.zip',
+        'object': {
+            'downloadLink': 'https://proxy-appli.statscan.gc.ca/wds/csv/18100004-en.zip',
+            'titleEn': 'Consumer Price Index',
+            'titleFr': 'Indice des prix à la consommation',
+            'tableNumber': '18-10-0004-01'
+        },
+        'status': 'SUCCESS',
+        'raw': {'status': 'SUCCESS'}
+    }
+    
+    with patch('publicdata_ca.providers.statcan._get_wds_download_manifest') as mock_manifest:
+        def _set_payload(payload):
+            mock_manifest.side_effect = lambda *args, **kwargs: copy.deepcopy(payload)
+        mock_manifest.payload_template = default_payload
+        mock_manifest.set_payload = _set_payload
+        _set_payload(default_payload)
+        yield mock_manifest
 
 
 def test_normalize_pid_already_normalized():
@@ -57,13 +83,13 @@ def test_normalize_pid_invalid_format():
 def test_build_wds_url_english():
     """Test building WDS URL for English."""
     url = _build_wds_url('18100004', 'en')
-    assert url == 'https://www150.statcan.gc.ca/t1/wds/rest/getFullTableDownloadCSV/en/18100004'
+    assert url == 'https://www150.statcan.gc.ca/t1/wds/rest/getFullTableDownloadCSV/18100004/en'
 
 
 def test_build_wds_url_french():
     """Test building WDS URL for French."""
     url = _build_wds_url('18100004', 'fr')
-    assert url == 'https://www150.statcan.gc.ca/t1/wds/rest/getFullTableDownloadCSV/fr/18100004'
+    assert url == 'https://www150.statcan.gc.ca/t1/wds/rest/getFullTableDownloadCSV/18100004/fr'
 
 
 def test_extract_zip():
@@ -178,7 +204,7 @@ def test_parse_manifest_invalid_json():
         assert result is None
 
 
-def test_download_statcan_table_success():
+def test_download_statcan_table_success(mock_wds_manifest):
     """Test successful download and extraction of a StatsCan table."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -219,7 +245,7 @@ def test_download_statcan_table_success():
         assert not (output_dir / '18100004_temp.zip').exists()
 
 
-def test_download_statcan_table_skip_existing():
+def test_download_statcan_table_skip_existing(mock_wds_manifest):
     """Test skip-if-exists logic."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -243,7 +269,7 @@ def test_download_statcan_table_skip_existing():
         assert content == 'existing,data\n1,2\n'
 
 
-def test_download_statcan_table_force_redownload():
+def test_download_statcan_table_force_redownload(mock_wds_manifest):
     """Test that skip_existing=False forces redownload."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -277,7 +303,7 @@ def test_download_statcan_table_force_redownload():
         assert content == 'new,data\n3,4\n'
 
 
-def test_download_statcan_table_with_hyphenated_id():
+def test_download_statcan_table_with_hyphenated_id(mock_wds_manifest):
     """Test download with hyphenated table ID."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -305,7 +331,7 @@ def test_download_statcan_table_with_hyphenated_id():
         assert result['pid'] == '18100004'
 
 
-def test_download_statcan_table_french_language():
+def test_download_statcan_table_french_language(mock_wds_manifest):
     """Test download with French language parameter."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -317,9 +343,14 @@ def test_download_statcan_table_french_language():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
+        french_payload = copy.deepcopy(mock_wds_manifest.payload_template)
+        french_payload['download_link'] = 'https://proxy-appli.statscan.gc.ca/wds/csv/18100004-fra.zip'
+        french_payload['object']['titleFr'] = 'Indice des prix'
+        mock_wds_manifest.set_payload(french_payload)
+        
         def mock_download(url, path, max_retries, write_metadata=True, headers=None):
-            # Verify URL uses French language
-            assert '/fr/' in url
+            # Verify the download link from the manifest is used
+            assert url == french_payload['download_link']
             with open(path, 'wb') as f:
                 f.write(zip_content)
             return path
@@ -329,10 +360,12 @@ def test_download_statcan_table_french_language():
         with patch('publicdata_ca.providers.statcan.download_file', side_effect=mock_download):
             result = download_statcan_table('18100004', str(output_dir), language='fr', skip_existing=False)
         
-        assert '/fr/' in result['url']
+        assert result['url'] == french_payload['download_link']
+        assert result['title'] == 'Indice des prix'
+        mock_wds_manifest.assert_called_with('18100004', 'fr', 3)
 
 
-def test_download_statcan_table_with_manifest():
+def test_download_statcan_table_with_manifest(mock_wds_manifest):
     """Test download with manifest parsing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -360,7 +393,38 @@ def test_download_statcan_table_with_manifest():
         assert result['manifest'] is not None
 
 
-def test_download_statcan_table_cleanup_on_error():
+def test_download_statcan_table_with_string_manifest(mock_wds_manifest):
+    """Test download when WDS manifest returns a direct link string."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        
+        with zipfile.ZipFile(tmpdir / 'mock.zip', 'w') as zf:
+            zf.writestr('18100004.csv', 'data\n')
+        
+        with open(tmpdir / 'mock.zip', 'rb') as f:
+            zip_content = f.read()
+        
+        payload = copy.deepcopy(mock_wds_manifest.payload_template)
+        payload['object'] = 'https://www150.statcan.gc.ca/n1/tbl/csv/18100004-eng.zip'
+        payload['download_link'] = payload['object']
+        mock_wds_manifest.set_payload(payload)
+        
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
+            assert url == payload['object']
+            with open(path, 'wb') as f:
+                f.write(zip_content)
+            return path
+        
+        output_dir = tmpdir / 'output'
+        
+        with patch('publicdata_ca.providers.statcan.download_file', side_effect=mock_download):
+            result = download_statcan_table('18100004', str(output_dir), skip_existing=False)
+        
+        assert result['url'] == payload['object']
+        assert (output_dir / '18100004.csv').exists()
+
+
+def test_download_statcan_table_cleanup_on_error(mock_wds_manifest):
     """Test that ZIP file is cleaned up on error."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -381,7 +445,7 @@ def test_download_statcan_table_cleanup_on_error():
         assert not (output_dir / '18100004_temp.zip').exists()
 
 
-def test_download_statcan_table_respects_max_retries():
+def test_download_statcan_table_respects_max_retries(mock_wds_manifest):
     """Test that max_retries parameter is passed to download_file."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -405,7 +469,7 @@ def test_download_statcan_table_respects_max_retries():
             download_statcan_table('18100004', str(output_dir), max_retries=5, skip_existing=False)
 
 
-def test_download_statcan_table_sets_correct_accept_header():
+def test_download_statcan_table_sets_correct_accept_header(mock_wds_manifest):
     """Test that download passes correct Accept header for ZIP files."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
@@ -432,9 +496,9 @@ def test_download_statcan_table_sets_correct_accept_header():
         with patch('publicdata_ca.providers.statcan.download_file', side_effect=mock_download):
             download_statcan_table('18100004', str(output_dir), skip_existing=False)
         
-        # Verify that headers were passed and contain correct Accept header
+        # Verify that headers were passed without Accept header
+        # StatsCan API is sensitive to Accept headers and works best without one
         assert received_headers is not None, "Headers should be passed to download_file"
-        assert 'Accept' in received_headers, "Accept header should be present"
-        assert received_headers['Accept'] == 'application/zip', \
-            "Accept header should be 'application/zip' to avoid HTTP 406 error"
+        assert 'Accept' not in received_headers, \
+            "Accept header should NOT be present to avoid HTTP 406 error with StatCan API"
         assert 'User-Agent' in received_headers, "User-Agent header should be present"

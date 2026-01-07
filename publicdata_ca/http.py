@@ -9,7 +9,9 @@ import os
 import time
 from typing import Dict, Optional, Any
 import requests
-from requests.exceptions import RequestException, HTTPError, Timeout
+
+from requests.exceptions import RequestException, HTTPError as RequestsHTTPError
+
 
 
 def get_default_headers() -> Dict[str, str]:
@@ -52,7 +54,7 @@ def retry_request(
     
     Raises:
         RequestException: If all retry attempts fail.
-        HTTPError: If the server returns an HTTP error code after all retries.
+        requests.HTTPError: If the server returns an HTTP error code after all retries.
     
     Example:
         >>> response = retry_request('https://www150.statcan.gc.ca/data.csv')
@@ -66,17 +68,17 @@ def retry_request(
     
     for attempt in range(max_retries):
         try:
-            response = requests.get(url, headers=headers, timeout=timeout, stream=True)
+            response = requests.get(url, headers=headers, timeout=timeout)
             response.raise_for_status()
             return response
         
-        except HTTPError as e:
+        except requests.HTTPError as e:
             # Don't retry on client errors (4xx), only on server errors (5xx) and specific codes
             if 400 <= e.response.status_code < 500 and e.response.status_code not in [429, 408]:
                 raise
             last_error = e
             
-        except (RequestException, Timeout) as e:
+        except RequestException as e:
             last_error = e
         
         # If this wasn't the last attempt, wait before retrying
@@ -132,7 +134,7 @@ def download_file(
     
     Raises:
         RequestException: If download fails after all retries.
-        HTTPError: If the server returns an HTTP error code (except 304 with caching enabled).
+        requests.HTTPError: If the server returns an HTTP error code (except 304 with caching enabled).
         ValueError: If validate_content_type=True and HTML content is detected.
     
     Example:
@@ -160,7 +162,7 @@ def download_file(
     
     try:
         response = retry_request(url, max_retries=max_retries, headers=request_headers)
-    except HTTPError as e:
+    except requests.HTTPError as e:
         # Handle 304 Not Modified - file hasn't changed
         if e.response.status_code == 304 and use_cache and os.path.exists(output_path):
             # File is still valid, no need to download
@@ -181,6 +183,7 @@ def download_file(
                 f"URL may be invalid or may have changed. Please verify the URL points to a data file."
             )
     
+    # Download file in chunks
     with open(output_path, 'wb') as f:
         for chunk in response.iter_content(chunk_size=chunk_size):
             if chunk:  # filter out keep-alive new chunks

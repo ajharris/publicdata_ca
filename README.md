@@ -23,7 +23,7 @@ python -m pip install -e ".[dev]"
 from publicdata_ca.providers.statcan import download_statcan_table
 
 # Download Consumer Price Index data
-download_statcan_table("18100004", "./data/raw")
+download_statcan_table("18100004", "./data/raw/cpi_all_items_18100004.csv")
 ```
 
 **Search and download from Open Canada:**
