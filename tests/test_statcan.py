@@ -193,7 +193,7 @@ def test_download_statcan_table_success():
             zip_content = f.read()
         
         # Mock the download_file function
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             # Write the test ZIP to the specified path
             with open(path, 'wb') as f:
                 f.write(zip_content)
@@ -261,7 +261,7 @@ def test_download_statcan_table_force_redownload():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             with open(path, 'wb') as f:
                 f.write(zip_content)
             return path
@@ -289,7 +289,7 @@ def test_download_statcan_table_with_hyphenated_id():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             with open(path, 'wb') as f:
                 f.write(zip_content)
             # Verify URL uses normalized PID
@@ -317,7 +317,7 @@ def test_download_statcan_table_french_language():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             # Verify URL uses French language
             assert '/fr/' in url
             with open(path, 'wb') as f:
@@ -345,7 +345,7 @@ def test_download_statcan_table_with_manifest():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             with open(path, 'wb') as f:
                 f.write(zip_content)
             return path
@@ -368,7 +368,7 @@ def test_download_statcan_table_cleanup_on_error():
         output_dir.mkdir()
         
         # Create an invalid ZIP file
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             with open(path, 'wb') as f:
                 f.write(b'not a zip file')
             return path
@@ -393,7 +393,7 @@ def test_download_statcan_table_respects_max_retries():
         with open(tmpdir / 'mock.zip', 'rb') as f:
             zip_content = f.read()
         
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             assert max_retries == 5
             with open(path, 'wb') as f:
                 f.write(zip_content)
@@ -403,3 +403,38 @@ def test_download_statcan_table_respects_max_retries():
         
         with patch('publicdata_ca.providers.statcan.download_file', side_effect=mock_download):
             download_statcan_table('18100004', str(output_dir), max_retries=5, skip_existing=False)
+
+
+def test_download_statcan_table_sets_correct_accept_header():
+    """Test that download passes correct Accept header for ZIP files."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = Path(tmpdir)
+        
+        # Create mock ZIP
+        with zipfile.ZipFile(tmpdir / 'mock.zip', 'w') as zf:
+            zf.writestr('18100004.csv', 'data\n')
+        
+        with open(tmpdir / 'mock.zip', 'rb') as f:
+            zip_content = f.read()
+        
+        received_headers = {}
+        
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
+            # Capture the headers that were passed
+            nonlocal received_headers
+            received_headers = headers
+            with open(path, 'wb') as f:
+                f.write(zip_content)
+            return path
+        
+        output_dir = tmpdir / 'output'
+        
+        with patch('publicdata_ca.providers.statcan.download_file', side_effect=mock_download):
+            download_statcan_table('18100004', str(output_dir), skip_existing=False)
+        
+        # Verify that headers were passed and contain correct Accept header
+        assert received_headers is not None, "Headers should be passed to download_file"
+        assert 'Accept' in received_headers, "Accept header should be present"
+        assert received_headers['Accept'] == 'application/zip', \
+            "Accept header should be 'application/zip' to avoid HTTP 406 error"
+        assert 'User-Agent' in received_headers, "User-Agent header should be present"

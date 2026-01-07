@@ -89,7 +89,7 @@ def test_download_statcan_table_with_fixture():
         output_dir = Path(tmpdir)
         
         # Mock the download_file function to use our fixture
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             # Copy the fixture to the download path
             shutil.copy(SAMPLE_ZIP_FILE, path)
             return path
@@ -132,7 +132,7 @@ def test_download_statcan_table_data_integrity():
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
         
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             shutil.copy(SAMPLE_ZIP_FILE, path)
             return path
         
@@ -171,7 +171,7 @@ def test_download_statcan_table_metadata_content():
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
         
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             shutil.copy(SAMPLE_ZIP_FILE, path)
             return path
         
@@ -201,7 +201,7 @@ def test_download_statcan_table_with_hyphenated_id():
     with tempfile.TemporaryDirectory() as tmpdir:
         output_dir = Path(tmpdir)
         
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             shutil.copy(SAMPLE_ZIP_FILE, path)
             # Verify the URL uses normalized PID
             assert '18100004' in url, "URL should use normalized PID"
@@ -228,7 +228,7 @@ def test_download_statcan_table_skip_existing_with_fixture():
         output_dir = Path(tmpdir)
         
         # First download
-        def mock_download(url, path, max_retries, write_metadata=True):
+        def mock_download(url, path, max_retries, write_metadata=True, headers=None):
             shutil.copy(SAMPLE_ZIP_FILE, path)
             return path
         

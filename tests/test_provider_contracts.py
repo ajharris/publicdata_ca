@@ -365,7 +365,7 @@ class TestStatCanProviderContract:
         # Use the real fixture file
         fixture_path = FIXTURES_DIR / 'statcan' / '18100004.zip'
         
-        def mock_download_fn(url, path, max_retries, write_metadata=True):
+        def mock_download_fn(url, path, max_retries, write_metadata=True, headers=None):
             import shutil
             shutil.copy(fixture_path, path)
             return path
