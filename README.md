@@ -41,7 +41,7 @@ print(f"Downloading dataset: {target.id} - {target.metadata['title']}")
 
 # Download CSV resources from a dataset
 ref = DatasetRef(provider='open_canada', id=target.id, params={'format': 'CSV'})
-provider.fetch(ref, './data/open_canada')
+result = provider.fetch(ref, './data/open_canada')
 ```
 
 **Search and download from any CKAN portal:**
@@ -58,7 +58,7 @@ print(f"Downloading dataset: {results[0].id} - {results[0].metadata['title']}")
 
 # Download CSV resources from a dataset
 ref = DatasetRef(provider='ckan', id=results[0].id, params={'format': 'CSV'})
-provider.fetch(ref, './data/ckan')
+result = provider.fetch(ref, './data/ckan')
 ```
 
 **Refresh all datasets using the CLI:**
