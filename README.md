@@ -66,11 +66,12 @@ ref = DatasetRef(
 )
 result = provider.fetch(ref, './data/ckan')
 ```
-
+<!-- #TODO - Enhance refresh, or eliminate if not necessary
 **Refresh all datasets using the CLI:**
 ```bash
 publicdata refresh
 ```
+
 
 **Or use the Python API:**
 ```python
@@ -79,7 +80,7 @@ from publicdata_ca import refresh_datasets
 report = refresh_datasets()
 print(report[['dataset', 'provider', 'result', 'notes']])
 ```
-
+-->
 ## Key Features
 
 ### HTTP Caching with ETag and Last-Modified
