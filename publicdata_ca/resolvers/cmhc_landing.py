@@ -142,6 +142,29 @@ def _rank_candidate(candidate: Dict[str, str]) -> int:
     return score
 
 
+def _get_html_content(response: Any) -> str:
+    """Return decoded HTML content for either requests responses or mocks."""
+    text_attr = getattr(response, 'text', None)
+    if isinstance(text_attr, str):
+        return text_attr
+
+    content_attr = getattr(response, 'content', None)
+    if isinstance(content_attr, bytes):
+        return content_attr.decode('utf-8', errors='ignore')
+    if isinstance(content_attr, str):
+        return content_attr
+
+    read_method = getattr(response, 'read', None)
+    if callable(read_method):
+        read_data = read_method()
+        if isinstance(read_data, bytes):
+            return read_data.decode('utf-8', errors='ignore')
+        if isinstance(read_data, str):
+            return read_data
+
+    raise TypeError('Response object does not provide decodable HTML content')
+
+
 def resolve_cmhc_landing_page(
     landing_url: str,
     validate: bool = True,
@@ -203,7 +226,7 @@ def resolve_cmhc_landing_page(
                 return cached_assets
     # Fetch the landing page
     response = retry_request(landing_url)
-    html_content = response.content.decode('utf-8', errors='ignore')
+    html_content = _get_html_content(response)
     
     # Parse base URL for resolving relative links
     parsed_url = urlparse(landing_url)
@@ -340,7 +363,7 @@ def extract_metadata_from_page(landing_url: str) -> Dict[str, str]:
             - description: Meta description or first paragraph
     """
     response = retry_request(landing_url)
-    html_content = response.content.decode('utf-8', errors='ignore')
+    html_content = _get_html_content(response)
     
     metadata = {}
     
