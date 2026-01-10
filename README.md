@@ -54,10 +54,16 @@ provider = CKANProvider(base_url='https://catalog.data.gov')
 results = provider.search('housing', rows=5)
 
 # Choose a dataset to download from the results returned
-print(f"Downloading dataset: {results[0].id} - {results[0].metadata['title']}")
+target = results[0]
+print(f"Downloading dataset: {target.id} - {target.metadata['title']}")
+print(f"Available formats: {', '.join(target.metadata['formats'])}")
 
 # Download CSV resources from a dataset
-ref = DatasetRef(provider='ckan', id=results[0].id, params={'format': 'CSV'})
+ref = DatasetRef(
+    provider='ckan',
+    id=target.id,
+    params={'format': 'CSV'}  # Filter out HTML "web page" resources
+)
 result = provider.fetch(ref, './data/ckan')
 ```
 
