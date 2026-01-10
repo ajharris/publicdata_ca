@@ -10,7 +10,7 @@ datasets:
       metric: "Rental Market Report data tables"
       frequency: "Annual"
       geo_scope: "Canada + major CMAs"
-      page_url: "https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research/housing-data/rental-market/rental-market-report-data-tables"
+      page_url: "https://www.cmhc-schl.gc.ca/en/professionals/housing-markets-data-and-research/housing-data/rental-market/rental-market-report-data-tables"
   
   - provider: cmhc
     id: housing_starts
@@ -19,7 +19,7 @@ datasets:
       metric: "Monthly housing starts + under construction"
       frequency: "Monthly"
       geo_scope: "Canada + CMAs"
-      page_url: "https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research/housing-data/data-tables/housing-market-data/monthly-housing-starts-construction-data-tables"
+      page_url: "https://www.cmhc-schl.gc.ca/en/professionals/housing-markets-data-and-research/housing-data/data-tables/housing-market-data/monthly-housing-starts-construction-data-tables"
 
 output_dir: data/raw
 options:

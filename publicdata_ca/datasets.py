@@ -139,7 +139,7 @@ DEFAULT_DATASETS: Sequence[Dataset] = (
         target_file=RAW_DATA_DIR / "rental_market_report_latest.xlsx",
         automation_status="semi-automatic",
         status_note="Uses the last verified CMHC Azure blob URL; update when the 2026 release ships.",
-        page_url="https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research/housing-data/rental-market/rental-market-report-data-tables",
+        page_url="https://www.cmhc-schl.gc.ca/en/professionals/housing-markets-data-and-research/housing-data/rental-market/rental-market-report-data-tables",
         tags=["housing", "rental", "real-estate"],
     ),
     Dataset(
@@ -153,7 +153,7 @@ DEFAULT_DATASETS: Sequence[Dataset] = (
         target_file=RAW_DATA_DIR / "housing_starts_latest.xlsx",
         automation_status="semi-automatic",
         status_note="Pinned to the November 2025 CMHC housing starts release; refresh when the next workbook is published.",
-        page_url="https://www.cmhc-schl.gc.ca/professionals/housing-markets-data-and-research/housing-data/data-tables/housing-market-data/monthly-housing-starts-construction-data-tables",
+        page_url="https://www.cmhc-schl.gc.ca/en/professionals/housing-markets-data-and-research/housing-data/data-tables/housing-market-data/monthly-housing-starts-construction-data-tables",
         tags=["housing", "construction", "real-estate"],
     ),
 )

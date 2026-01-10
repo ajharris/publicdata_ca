@@ -89,7 +89,18 @@ def download_statcan_table(
         # Retrieve manifest metadata and download link from StatsCan WDS
         wds_manifest = _get_wds_download_manifest(pid, language, max_retries)
         download_url = wds_manifest['download_link']
-        manifest_object = wds_manifest['object']
+
+        # Some legacy endpoints (and unit tests) return the manifest object as a plain URL
+        # string instead of the full metadata dict. Normalize it so downstream helpers expect
+        # a mapping.
+        manifest_object = wds_manifest.get('object')
+        if isinstance(manifest_object, str):
+            manifest_object = {'downloadLink': manifest_object}
+        elif isinstance(manifest_object, list):
+            manifest_object = manifest_object[0] if manifest_object else {}
+        elif not isinstance(manifest_object, dict) or manifest_object is None:
+            manifest_object = {}
+
         manifest_title = _extract_manifest_title(manifest_object, language, pid)
         
         # Download ZIP file to temporary location
