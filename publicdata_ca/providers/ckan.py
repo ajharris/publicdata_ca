@@ -21,6 +21,37 @@ from publicdata_ca.http import retry_request, download_file
 from publicdata_ca.provider import Provider, DatasetRef
 
 
+_NON_DOWNLOADABLE_RESOURCE_TYPES = {
+    'documentation',
+    'guide',
+    'metadata',
+    'webpage',
+    'website',
+}
+
+_NON_DOWNLOADABLE_FORMATS = {
+    'html',
+    'htm',
+    'web page',
+    'website',
+}
+
+
+def _resource_is_downloadable(resource: Dict[str, Any]) -> bool:
+    """Return True when a CKAN resource points to a real file or API."""
+    url = resource.get('url')
+    if not url:
+        return False
+    resource_type = (resource.get('resource_type') or '').strip().lower()
+    format_hint = (resource.get('format') or '').strip().lower()
+
+    if resource_type in _NON_DOWNLOADABLE_RESOURCE_TYPES:
+        return False
+    if format_hint in _NON_DOWNLOADABLE_FORMATS and resource_type not in {'api'}:
+        return False
+    return True
+
+
 def search_ckan_datasets(
     base_url: str,
     query: str,
@@ -403,8 +434,13 @@ class CKANProvider(Provider):
         # Convert results to DatasetRef objects
         refs = []
         for package in search_results.get('results', []):
+            resources = package.get('resources', [])
+            downloadable_resources = [r for r in resources if _resource_is_downloadable(r)]
+            if not downloadable_resources:
+                # Skip packages that only link to landing pages or documentation
+                continue
             # Get resource formats
-            formats = [r.get('format', '').upper() for r in package.get('resources', [])]
+            formats = [r.get('format', '').upper() for r in downloadable_resources]
             formats = [f for f in formats if f]  # Remove empty strings
             
             ref = DatasetRef(
@@ -415,7 +451,7 @@ class CKANProvider(Provider):
                     'title': package.get('title', ''),
                     'description': package.get('notes', ''),
                     'organization': package.get('organization', {}).get('title', ''),
-                    'num_resources': len(package.get('resources', [])),
+                    'num_resources': len(downloadable_resources),
                     'formats': formats,
                 },
                 tags=[tag.get('name', '') for tag in package.get('tags', [])]
@@ -479,13 +515,15 @@ class CKANProvider(Provider):
         # Filter by specific resource ID if provided
         if resource_id:
             resources = [r for r in resources if r.get('id') == resource_id]
-        # Otherwise filter by format if provided
-        elif format_filter:
-            format_lower = format_filter.lower()
-            resources = [
-                r for r in resources
-                if r.get('format', '').lower() == format_lower
-            ]
+        else:
+            resources = [r for r in resources if _resource_is_downloadable(r)]
+            # Otherwise filter by format if provided
+            if format_filter:
+                format_lower = format_filter.lower()
+                resources = [
+                    r for r in resources
+                    if r.get('format', '').lower() == format_lower
+                ]
         
         return {
             'resources': resources,
