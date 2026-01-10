@@ -29,14 +29,22 @@ def load_fixture(filename):
         return f.read()
 
 
+def make_mock_html_response(html_content: str) -> Mock:
+    """Create a requests-like Mock response with encoded HTML content."""
+    payload = html_content.encode('utf-8')
+    mock_response = Mock()
+    mock_response.content = payload
+    mock_response.read = Mock(return_value=payload)
+    return mock_response
+
+
 def test_resolve_cmhc_landing_page_with_html_fixture():
     """Test resolving assets from a real HTML fixture."""
     # Load the fixture HTML
     html_content = load_fixture('sample_landing_page.html')
     
     # Mock the HTTP request to return our fixture
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page(
@@ -83,8 +91,7 @@ def test_resolve_cmhc_landing_page_handles_relative_urls():
     """Test that relative URLs in fixture are resolved to absolute."""
     html_content = load_fixture('sample_landing_page.html')
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     base_url = 'https://www.cmhc-schl.gc.ca/en/data'
     
@@ -111,8 +118,7 @@ def test_resolve_cmhc_landing_page_deduplicates_urls():
     """Test that duplicate URLs in fixture are filtered out."""
     html_content = load_fixture('sample_landing_page.html')
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page(
@@ -139,8 +145,7 @@ def test_resolve_cmhc_landing_page_ranks_by_format():
     """Test that assets are ranked with XLSX preferred over CSV over XLS."""
     html_content = load_fixture('sample_landing_page.html')
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page(
@@ -173,8 +178,7 @@ def test_resolve_cmhc_landing_page_prefers_clean_urls():
     """Test that clean URLs without query parameters are preferred."""
     html_content = load_fixture('sample_landing_page.html')
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page(
@@ -210,8 +214,7 @@ def test_resolve_cmhc_landing_page_extracts_data_attributes():
     """Test that URLs from data-* attributes are extracted."""
     html_content = load_fixture('sample_landing_page.html')
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page(
@@ -230,8 +233,7 @@ def test_extract_metadata_from_page_with_fixture():
     """Test metadata extraction from HTML fixture."""
     html_content = load_fixture('sample_landing_page.html')
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         metadata = extract_metadata_from_page('https://example.com/landing')
@@ -249,8 +251,7 @@ def test_resolve_cmhc_landing_page_ignores_non_data_links():
     """Test that non-data links (HTML, PDF without extensions) are ignored."""
     html_content = load_fixture('sample_landing_page.html')
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page(

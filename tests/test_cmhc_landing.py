@@ -15,6 +15,15 @@ from publicdata_ca.resolvers.cmhc_landing import (
 )
 
 
+def make_mock_html_response(html_content: str) -> Mock:
+    """Create a requests-like Mock response with encoded HTML content."""
+    payload = html_content.encode('utf-8')
+    mock_response = Mock()
+    mock_response.content = payload
+    mock_response.read = Mock(return_value=payload)
+    return mock_response
+
+
 def test_rank_candidate_prefers_xlsx():
     """Test that XLSX files get higher ranking than other formats."""
     xlsx_candidate = {'url': 'data.xlsx', 'title': 'Data', 'format': 'xlsx'}
@@ -181,8 +190,7 @@ def test_resolve_cmhc_landing_page_extracts_csv_links():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response), \
          patch('publicdata_ca.resolvers.cmhc_landing._check_content_type', return_value=(True, 'text/csv')):
@@ -205,8 +213,7 @@ def test_resolve_cmhc_landing_page_extracts_xlsx_links():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response), \
          patch('publicdata_ca.resolvers.cmhc_landing._check_content_type', return_value=(True, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')):
@@ -230,8 +237,7 @@ def test_resolve_cmhc_landing_page_ranks_candidates():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page('https://example.com/landing', validate=False, use_cache=False)
@@ -258,8 +264,7 @@ def test_resolve_cmhc_landing_page_validates_and_rejects_html():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     def mock_check(url):
         if 'fake' in url:
@@ -295,8 +300,7 @@ def test_resolve_cmhc_landing_page_without_validation():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page('https://example.com/landing', validate=False, use_cache=False)
@@ -318,8 +322,7 @@ def test_resolve_cmhc_landing_page_resolves_absolute_urls():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page('https://example.com/page', validate=False, use_cache=False)
@@ -348,8 +351,7 @@ def test_resolve_cmhc_landing_page_avoids_duplicates():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page('https://example.com/page', validate=False, use_cache=False)
@@ -374,8 +376,7 @@ def test_resolve_cmhc_landing_page_extracts_data_attributes():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         assets = resolve_cmhc_landing_page('https://example.com/page', validate=False, use_cache=False)
@@ -400,8 +401,7 @@ def test_resolve_cmhc_landing_page_limits_validation_attempts():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     validation_calls = []
     
@@ -441,8 +441,7 @@ def test_extract_metadata_from_page():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         metadata = extract_metadata_from_page('https://example.com/page')
@@ -461,8 +460,7 @@ def test_extract_metadata_fallback_to_h1():
     </html>
     '''
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
         metadata = extract_metadata_from_page('https://example.com/page')
@@ -508,8 +506,7 @@ def test_resolve_cmhc_landing_page_bypasses_cache_when_disabled():
     landing_url = 'https://example.com/landing'
     html_content = '<html><body><a href="fresh.csv">Fresh File</a></body></html>'
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.load_cached_urls') as mock_load, \
          patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response):
@@ -529,8 +526,7 @@ def test_resolve_cmhc_landing_page_saves_to_cache():
     landing_url = 'https://example.com/landing'
     html_content = '<html><body><a href="data.csv">Data File</a></body></html>'
     
-    mock_response = Mock()
-    mock_response.read.return_value = html_content.encode('utf-8')
+    mock_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.load_cached_urls', return_value=None), \
          patch('publicdata_ca.resolvers.cmhc_landing.retry_request', return_value=mock_response), \
@@ -554,8 +550,7 @@ def test_resolve_cmhc_landing_page_revalidates_stale_cache():
     ]
     html_content = '<html><body><a href="fresh.csv">Fresh File</a></body></html>'
     
-    mock_landing_response = Mock()
-    mock_landing_response.read.return_value = html_content.encode('utf-8')
+    mock_landing_response = make_mock_html_response(html_content)
     
     with patch('publicdata_ca.resolvers.cmhc_landing.load_cached_urls', return_value=cached_assets), \
          patch('publicdata_ca.resolvers.cmhc_landing._check_content_type', return_value=(False, 'text/html')), \

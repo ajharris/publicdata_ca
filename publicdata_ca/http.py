@@ -25,6 +25,7 @@ def get_default_headers() -> Dict[str, str]:
         'User-Agent': 'publicdata_ca/0.1.0 (Python; Canadian Public Data Client)',
         'Accept': '*/*',
         'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'en-CA,en;q=0.9,fr-CA;q=0.6,fr;q=0.5',
     }
 
 
