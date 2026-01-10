@@ -5,24 +5,42 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "publicdata-ca"
 version = "0.1.0"
-description = "Tools for discovering, resolving, and downloading Canadian public datasets."
+description = "A lightweight Python package for discovering, resolving, and downloading Canadian public datasets."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [
   { name = "Drew Harris" }
 ]
-keywords = ["canada", "open-data", "statcan", "cmhc", "catalog"]
+maintainers = [
+  { name = "Drew Harris" }
+]
+keywords = [
+  "canada",
+  "open-data",
+  "statcan",
+  "statistics-canada",
+  "cmhc",
+  "open-canada",
+  "ckan",
+  "data-catalog",
+  "data-download",
+  "canadian-data"
+]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
+  "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Topic :: Scientific/Engineering :: Information Analysis"
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed"
 ]
 dependencies = [
   "pandas>=2.2",
@@ -30,7 +48,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.2", "pytest-cov>=4.1"]
+dev = [
+  "pytest>=8.2",
+  "pytest-cov>=4.1"
+]
+
+[project.urls]
+Homepage = "https://github.com/ajharris/publicdata_ca"
+Documentation = "https://github.com/ajharris/publicdata_ca/tree/main/docs"
+Repository = "https://github.com/ajharris/publicdata_ca"
+Issues = "https://github.com/ajharris/publicdata_ca/issues"
+Changelog = "https://github.com/ajharris/publicdata_ca/blob/main/CHANGELOG.md"
 
 [project.scripts]
 publicdata = "publicdata_ca.cli:main"
